@@ -1,5 +1,6 @@
 use crate::process;
 use nix::sys::wait::{waitpid, WaitStatus};
+use nix::sys::ptrace;
 use std::io;
 pub struct Debugger {
     process: process::Process,
@@ -48,6 +49,7 @@ impl Debugger {
     
     fn cont(&self) {
         println!("Continuing execution...");
+        ptrace::cont(self.process.pid, None).expect("hi");
     }
     
     fn exit(&self) {
@@ -61,8 +63,6 @@ impl Debugger {
             
             let command = self.get_command();
             self.handle_command(command.as_str());
-            
-
 
             match status {
                 Ok(WaitStatus::Exited(_, exit_status)) => {

@@ -3,8 +3,6 @@ mod debugger;
 
 use std::env;
 use std::path::Path;
-// use crate::debugger;
-
 
 // try attach first
 fn main() {
