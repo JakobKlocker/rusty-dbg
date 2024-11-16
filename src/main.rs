@@ -1,9 +1,12 @@
 mod process; 
-use process::Process;
+mod debugger;
+
 use std::env;
 use std::path::Path;
+// use crate::debugger;
 
 
+// try attach first
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -30,5 +33,6 @@ fn main() {
     }
 
     let pid: i32 = input.parse().expect("Failed to parse PID"); 
-    let process = Process::attach(pid);
+    let dbg = debugger::Debugger::new(pid);
+    dbg.run();
 }
