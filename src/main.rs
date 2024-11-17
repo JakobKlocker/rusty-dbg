@@ -32,6 +32,6 @@ fn main() {
     }
 
     let pid: i32 = input.parse().expect("Failed to parse PID"); 
-    let dbg = debugger::Debugger::new(pid);
+    let mut dbg = debugger::Debugger::new(pid);
     dbg.run();
 }

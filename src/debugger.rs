@@ -12,7 +12,7 @@ impl Debugger {
     pub fn new(pid :i32) -> Self{
         Debugger{
             process: process::Process::attach(pid),
-            breakpoint
+            breakpoint: breakpoint::Breakpoint::new(),
         }
     }
 
@@ -26,14 +26,14 @@ impl Debugger {
         return command.to_string();
     }
 
-    fn handle_command(&self, command: &str){
+    fn handle_command(&mut self, command: &str){
         let mut parts = command.split_whitespace();
         let command_word = parts.next();
         match command_word {
             Some("breakpoint") => {
                 if let Some(arg) = parts.next(){
                     let breakpoint_addr: u64 = arg.parse().unwrap();
-                    self.breakpoint(breakpoint_addr);  
+                    self.breakpoint.set_breakpoint(breakpoint_addr, self.process.pid);
                     
                 } else {
                     println!("No seconda argument provided for breakpoint");
@@ -55,7 +55,7 @@ impl Debugger {
     }
     
 
-    pub fn run(&self){
+    pub fn run(&mut self){
         loop {
             let status = waitpid(self.process.pid, None);
             
@@ -86,6 +86,4 @@ impl Debugger {
         }
         println!("Debugger run complete.");
     }
-
-
 }
