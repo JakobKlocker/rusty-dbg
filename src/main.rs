@@ -1,5 +1,6 @@
 mod process; 
 mod debugger;
+mod breakpoint;
 
 use std::env;
 use std::path::Path;

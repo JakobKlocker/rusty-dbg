@@ -1,16 +1,18 @@
 use crate::process;
+use crate::breakpoint;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::sys::ptrace;
 use std::io;
 pub struct Debugger {
     process: process::Process,
-    // breakpoint later here
+    breakpoint: breakpoint::Breakpoint,
 }
 
 impl Debugger {
     pub fn new(pid :i32) -> Self{
         Debugger{
             process: process::Process::attach(pid),
+            breakpoint
         }
     }
 
@@ -30,7 +32,7 @@ impl Debugger {
         match command_word {
             Some("breakpoint") => {
                 if let Some(arg) = parts.next(){
-                    let breakpoint_addr: i32 = arg.parse().unwrap();
+                    let breakpoint_addr: u64 = arg.parse().unwrap();
                     self.breakpoint(breakpoint_addr);  
                     
                 } else {
@@ -41,10 +43,6 @@ impl Debugger {
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
-    }
-
-    fn breakpoint(&self, id: i32) {
-        println!("Setting breakpoint at {}", id);
     }
     
     fn cont(&self) {
