@@ -61,7 +61,6 @@ impl Debugger {
         println!("Exiting the debugger...");
         std::process::exit(0);
     }
-    
 
     pub fn run(&mut self){
         loop {

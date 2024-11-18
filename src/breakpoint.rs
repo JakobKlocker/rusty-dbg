@@ -2,7 +2,7 @@ use nix::{sys::ptrace, unistd::Pid};
 use nix::libc;
 
 pub struct Breakpoint{
-    breakpoint: Vec<u64>,
+    breakpoint: Vec<(u64, u8)>,
 }
 
 impl Breakpoint{
@@ -13,9 +13,10 @@ impl Breakpoint{
     }
 
     pub fn set_breakpoint(&mut self, addr: u64, pid: Pid){
-        self.breakpoint.push(addr);
+
+        let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
+
         ptrace::write(pid, addr as *mut libc::c_void, 0xCC);
-        println!("added bp {}", addr);
     
         match ptrace::read(pid, addr as *mut libc::c_void) {
             Ok(breakpoint_check) => {
@@ -23,6 +24,8 @@ impl Breakpoint{
                     println!("Breakpoint was not written correctly: 0x{:x}", breakpoint_check);
                 } else {
                     println!("Breakpoint is correctly set.");
+                    self.breakpoint.push((addr, original_byte));
+                    self.show_breakpoints();
                 }
             }
             Err(err) => {
@@ -31,12 +34,18 @@ impl Breakpoint{
         }
     }
 
-    pub fn remove_breakpoint(mut self, addr: u64) -> bool {
-        if let Some(index) = self.breakpoint.iter().position(|&x| x == addr){
-            self.breakpoint.remove(index);
-            println!("found bp, removed {}", addr);
-            return true;
+    pub fn remove_breakpoint(&self, addr: u64, pid: Pid) -> bool {
+        if let Some((saved_addr, saved_byte)) = self.breakpoint.iter().find(|(a, _)| *a == addr) {
+            ptrace::write(pid, *saved_addr as *mut libc::c_void, *saved_byte as i64).unwrap();
+            println!("Breakpoint removed and original byte restored at: {:#x}", saved_addr);
+            true;
         }
-        false
+        return false;
+    }
+
+    pub fn show_breakpoints(&self){
+        for bp in self.breakpoint.iter(){
+            println!("addr: {}  byte: {}", bp.0, bp.1);
+        }
     }
 }
