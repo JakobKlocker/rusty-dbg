@@ -49,3 +49,35 @@ impl Breakpoint{
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::process::Command;
+    use std::path::Path;
+
+    #[test]
+    fn compile_test_program() {
+        let test_program_path = Path::new("./test-programm");
+
+        assert!(
+            test_program_path.exists(),
+            "Test program path does not exist: {}",
+            test_program_path.display()
+        );
+
+        let output = Command::new("cargo")
+            .arg("build")
+            .current_dir(test_program_path)
+            .output()
+            .expect("Failed to execute `cargo build`");
+
+        if output.status.success() {
+            println!("Test program compiled successfully!");
+        } else {
+            panic!(
+                "Failed to compile test program: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+}
