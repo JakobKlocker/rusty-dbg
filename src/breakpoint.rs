@@ -55,8 +55,10 @@ mod tests {
     use std::process::Command;
     use std::path::Path;
 
+    use crate::debugger::Debugger;
+
     #[test]
-    fn compile_test_program() {
+    fn compile_test_program(){
         let test_program_path = Path::new("./test-programm");
 
         assert!(
@@ -79,5 +81,9 @@ mod tests {
                 String::from_utf8_lossy(&output.stderr)
             );
         }
+    }
+
+    fn breakpoint_test_programm(){
+        // Debugger::new()
     }
 }

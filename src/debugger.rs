@@ -3,18 +3,28 @@ use crate::breakpoint;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::sys::ptrace;
 use std::io;
+use std::path::Path;
+use nix::unistd::Pid;
+use std::process::{Command, exit};
+
+
 pub struct Debugger {
     process: process::Process,
     breakpoint: breakpoint::Breakpoint,
 }
 
 impl Debugger {
-    pub fn new(pid :i32) -> Self{
+    pub fn new(input :String) -> Self{
+
+        let pid = get_pid_from_input(input);
+
         Debugger{
             process: process::Process::attach(pid),
             breakpoint: breakpoint::Breakpoint::new(),
         }
     }
+
+    
 
     fn get_command(&self) -> String{
         println!("Enter Command: ");
@@ -90,4 +100,24 @@ impl Debugger {
         }
         println!("Debugger run complete.");
     }
+}
+
+
+fn get_pid_from_input(input: String) -> i32{
+    let mut pid: i32 = 0;
+    if Path::new(&format!("/proc/{}", input)).is_dir() {
+        println!("{} is a pid", input);
+        pid = input.parse().expect("Failed to parse PID"); 
+    }
+    else if Path::new(&input).is_file() {
+        println!("{} is a file", input);
+        println!("Executing {}", input);
+        let child = Command::new(input)
+        .spawn().unwrap();
+        pid = child.id() as i32;
+    }
+    else{
+        panic!("provided pid|path not valid");
+    }
+    return pid;
 }

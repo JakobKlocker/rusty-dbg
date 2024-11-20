@@ -16,22 +16,6 @@ fn main() {
 
     let input = &args[1];
 
-    if Path::new(&format!("/proc/{}", input)).is_dir() {
-        println!("{} is a pid", input);
-    }
-    else if Path::new(input).is_file() {
-        println!("{} is a path", input);
-    }
-    else if Path::new(input).is_dir() {
-        print!("Invalid: {} is a dir", input);
-        return;
-    }
-    else{
-        println!("{} is neither path nor dir", input);
-        return;
-    }
-
-    let pid: i32 = input.parse().expect("Failed to parse PID"); 
-    let mut dbg = debugger::Debugger::new(pid);
+    let mut dbg = debugger::Debugger::new(input.to_string());
     dbg.run();
 }
