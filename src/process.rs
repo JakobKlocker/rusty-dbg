@@ -14,24 +14,27 @@ impl Process {
         let pid = Pid::from_raw(pid);
         ptrace::attach(pid).expect("Failed to attach to process");
         println!("Successfully attached to PID: {}", pid);
+        let maps = Self::get_maps_info(pid);
 
-        match getregs(pid) {
-            Ok(regs) => println!("Registers: {:?}", regs),
-            Err(err) => println!("Failed to get registers: {}", err),
-        }
-        parse_maps_file(pid);
+
         Process { pid }
     }
 
-
-}
-
-pub fn parse_maps_file(pid: Pid) -> Result<(), Box<dyn Error>>{
-    let file_path = format!("/proc/{}/maps", pid);
-    let buff_reader = BufReader::new(fs::File::open(file_path)?);
-    for line in buff_reader.lines(){
-        let line = line?;
-        println!("{}", line);
+    fn parse_maps_info(maps: Vec<String>){
+        // NEXT
     }
-    Ok(())
+
+    fn get_maps_info(pid: Pid) -> Result<Vec<String>, Box<dyn Error>>{
+        let file_path = format!("/proc/{}/maps", pid);
+        let buff_reader = BufReader::new(fs::File::open(file_path)?);
+        let mut maps = Vec::new();
+        for line in buff_reader.lines(){
+            let line = line?;
+            println!("{}", line);
+            maps.push(line);
+        }
+        Ok(maps)
+    }
+
 }
+
