@@ -13,6 +13,7 @@ impl Breakpoint{
     }
 
     pub fn set_breakpoint(&mut self, addr: u64, pid: Pid){
+        println!("add: {}  pid: {}", addr, pid);
 
         let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
 
@@ -83,7 +84,18 @@ mod tests {
         }
     }
 
-    fn breakpoint_test_programm(){
-        // Debugger::new()
+    #[test]
+    fn test_breakpoint_on_ls(){
+        let ls_path = "/bin/ls";
+
+        assert!(
+            std::path::Path::new(ls_path).exists(),
+            "ls doesn't exist {}",
+            ls_path
+        );
+
+        let mut debugger = Debugger::new(ls_path.to_string());
+
+        debugger.breakpoint.set_breakpoint(0x1234, debugger.process.pid);
     }
 }

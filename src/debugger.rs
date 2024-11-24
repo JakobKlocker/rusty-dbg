@@ -9,8 +9,8 @@ use std::process::{Command, exit};
 
 
 pub struct Debugger {
-    process: process::Process,
-    breakpoint: breakpoint::Breakpoint,
+    pub process: process::Process,
+    pub breakpoint: breakpoint::Breakpoint,
 }
 
 impl Debugger {
