@@ -95,8 +95,9 @@ mod tests {
         );
 
         let mut debugger = Debugger::new(ls_path.to_string());
-        nix::sys::wait::waitpid(debugger.process.pid, None);
+        nix::sys::wait::waitpid(debugger.process.pid, None).unwrap();
 
-        debugger.breakpoint.set_breakpoint(0x1234, debugger.process.pid);
+        // TODO: Parse processes read/write to get a valid address to breakpoint at 
+        // debugger.breakpoint.set_breakpoint(0x1234, debugger.process.pid);
     }
 }

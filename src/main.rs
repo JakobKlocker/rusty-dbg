@@ -3,7 +3,6 @@ mod debugger;
 mod breakpoint;
 
 use std::env;
-use std::path::Path;
 
 // try attach first
 fn main() {
