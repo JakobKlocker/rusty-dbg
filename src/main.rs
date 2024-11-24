@@ -18,5 +18,4 @@ fn main() {
 
     let mut dbg = debugger::Debugger::new(input.to_string());
     dbg.run();
-    // dbg.breakpoint.set_breakpoint(4660, dbg.process.pid);
 }
