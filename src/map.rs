@@ -2,6 +2,7 @@ use nix::unistd::Pid;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
 use std::fs;
+use std::fmt;
 
 pub struct Map{
     addr_start: u64,
@@ -14,57 +15,56 @@ pub struct Map{
 }
 
 impl Map{
-    pub fn new(pid: Pid) -> Result<Self, Box<dyn Error>> {
-        let maps = Self::get_maps_info(pid)?;
-        let map_info = Self::parse_maps_info(maps)?;
-
-        Ok(map_info)
+    pub fn new(pid: Pid) -> Result<Vec<Self>, Box<dyn Error>> {
+        let maps_info = Self::get_maps_info(pid)?;
+        let mut map_objects = Vec::new();
+    
+        for map in maps_info {
+            let map_object = Self::parse_maps_info(map)?;
+            map_objects.push(map_object);
+        }
+        Ok(map_objects)
     }
 
         //maps line example: 622b53609000-622b5360d000 r--p 00000000 103:05 4327957                   /usr/bin/ls
-        pub fn parse_maps_info(maps: Vec<String>) -> Result<Self, Box<dyn Error>> {
-            for map in maps {
-                println!("{}", map);
-                let parts: Vec<&str> = map.split_whitespace().collect();
-                if parts.len() < 6 {
-                    return Err("Failed parsing maps, len below 6".into());
-                }
-    
-                let addr_range: Vec<&str> = parts[0].split('-').collect();
-                println!("{:?}", addr_range);
-    
-                let addr_start = u64::from_str_radix(addr_range[0], 16).unwrap();
-                let addr_end = u64::from_str_radix(addr_range[1], 16).unwrap();
-                
-                let mut read = false;
-                let mut write = false;
-                let mut execute = false;
-                let mut shared = false;
-                let mut private = false;
-    
-                for ch in parts[1].chars() {
-                    match ch {
-                        'r' => read = true,
-                        'w' => write = true,
-                        'x' => execute = true,
-                        's' => shared = true,
-                        'p' => private = true,
-                        _ => (),
-                    }
-                }
-    
-                return Ok(Map {
-                    addr_start,
-                    addr_end,
-                    read,
-                    write,
-                    execute,
-                    shared,
-                    private,
-                });
+        pub fn parse_maps_info(map: String) -> Result<Self, Box<dyn Error>> {
+            let parts: Vec<&str> = map.split_whitespace().collect();
+            println!("{:?}", parts);
+            if parts.len() < 5 { // should check for 6, sometimes it's below 5 thought. RECHECK THIS
+                return Err("Failed parsing maps, len below 5".into());
             }
     
-            Err("No valid maps found".into())
+            let addr_range: Vec<&str> = parts[0].split('-').collect();
+            let addr_start = u64::from_str_radix(addr_range[0], 16)?;
+            let addr_end = u64::from_str_radix(addr_range[1], 16)?;
+    
+            let permissions = parts[1];
+            let mut read = false;
+            let mut write = false;
+            let mut execute = false;
+            let mut shared = false;
+            let mut private = false;
+    
+            for ch in permissions.chars() {
+                match ch {
+                    'r' => read = true,
+                    'w' => write = true,
+                    'x' => execute = true,
+                    's' => shared = true,
+                    'p' => private = true,
+                    _ => (),
+                }
+            }
+    
+            Ok(Map {
+                addr_start,
+                addr_end,
+                read,
+                write,
+                execute,
+                shared,
+                private,
+            })
         }
 
         pub fn get_maps_info(pid: Pid) -> Result<Vec<String>, Box<dyn Error>>{
@@ -76,5 +76,21 @@ impl Map{
                 maps.push(line);
             }
             Ok(maps)
+    }
+}
+
+impl fmt::Display for Map {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Map {{ addr_start: 0x{:x}, addr_end: 0x{:x}, read: {}, write: {}, execute: {}, shared: {}, private: {} }}",
+            self.addr_start, 
+            self.addr_end,
+            self.read,
+            self.write,
+            self.execute,
+            self.shared,
+            self.private
+        )
     }
 }

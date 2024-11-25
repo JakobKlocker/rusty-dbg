@@ -5,7 +5,6 @@ mod map;
 
 use std::env;
 
-// try attach first
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -17,5 +16,6 @@ fn main() {
     let input = &args[1];
 
     let mut dbg = debugger::Debugger::new(input.to_string());
+    dbg.process.print_map_infos();
     dbg.run();
 }

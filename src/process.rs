@@ -15,9 +15,14 @@ impl Process {
         let pid = Pid::from_raw(pid);
         ptrace::attach(pid).expect("Failed to attach to process");
         println!("Successfully attached to PID: {}", pid);
-        let maps = Self::maps::
+        let maps = Map::new(pid).expect("Failed to get maps");
+        Process { pid, maps}
+    }
 
-        Process { pid, maps }
+    pub fn print_map_infos(&self) {
+        for map in &self.maps {
+            println!("{}", map);
+        }
     }
 }
 
