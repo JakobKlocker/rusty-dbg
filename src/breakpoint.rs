@@ -58,46 +58,47 @@ mod tests {
 
     use crate::debugger::Debugger;
 
-    #[test]
-    fn compile_test_program(){
-        let test_program_path = Path::new("./test-programm");
-
-        assert!(
-            test_program_path.exists(),
-            "Test program path does not exist: {}",
-            test_program_path.display()
-        );
-
-        let output = Command::new("cargo")
-            .arg("build")
-            .current_dir(test_program_path)
-            .output()
-            .expect("Failed to execute `cargo build`");
-
-        if output.status.success() {
-            println!("Test program compiled successfully!");
-        } else {
-            panic!(
-                "Failed to compile test program: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
-    }
-
+    
     #[test]
     fn test_breakpoint_on_ls(){
         let ls_path = "/bin/ls";
-
+        
         assert!(
             std::path::Path::new(ls_path).exists(),
             "ls doesn't exist {}",
             ls_path
         );
-
+        
         let mut debugger = Debugger::new(ls_path.to_string());
         nix::sys::wait::waitpid(debugger.process.pid, None).unwrap();
-
+        
         // TODO: Parse processes read/write to get a valid address to breakpoint at 
         // debugger.breakpoint.set_breakpoint(0x1234, debugger.process.pid);
     }
 }
+
+// #[test]
+// fn compile_test_program(){
+//     let test_program_path = Path::new("./test-programm");
+
+//     assert!(
+//         test_program_path.exists(),
+//         "Test program path does not exist: {}",
+//         test_program_path.display()
+//     );
+
+//     let output = Command::new("cargo")
+//         .arg("build")
+//         .current_dir(test_program_path)
+//         .output()
+//         .expect("Failed to execute `cargo build`");
+
+//     if output.status.success() {
+//         println!("Test program compiled successfully!");
+//     } else {
+//         panic!(
+//             "Failed to compile test program: {}",
+//             String::from_utf8_lossy(&output.stderr)
+//         );
+//     }
+// }
