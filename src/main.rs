@@ -1,6 +1,7 @@
 mod process; 
 mod debugger;
 mod breakpoint;
+mod map;
 
 use std::env;
 
