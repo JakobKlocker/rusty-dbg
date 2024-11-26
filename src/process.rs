@@ -1,9 +1,6 @@
 use crate::map::Map;
 use nix::unistd::Pid;
 use nix::sys::ptrace;
-use std::fs;
-use std::io::{BufRead, BufReader};
-use std::error::Error;
 
 pub struct Process {
     pub pid: Pid,

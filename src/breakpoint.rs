@@ -54,12 +54,11 @@ impl Breakpoint{
 
 #[cfg(test)]
 mod tests {
-    use nix::{sys::ptrace, unistd::Pid};
+    use nix::sys::ptrace;
     use nix::libc;
-
     use crate::debugger::Debugger;
 
-    
+
     #[test]
     fn test_breakpoint_on_ls(){
         let ls_path = "/bin/ls";
@@ -69,13 +68,10 @@ mod tests {
             "ls doesn't exist {}",
             ls_path
         );
-        
         let mut debugger = Debugger::new(ls_path.to_string());
         nix::sys::wait::waitpid(debugger.process.pid, None).unwrap();
-        
         let addr: u64 = debugger.process.get_random_rw_memory().unwrap();
         println!("Found random address: {:x}", addr);
-
         let original_byte = ptrace::read(debugger.process.pid, addr as *mut libc::c_void).unwrap();
         println!("Original Byte: {:x}", original_byte);
         debugger.breakpoint.set_breakpoint(addr, debugger.process.pid);
@@ -89,29 +85,3 @@ mod tests {
         }
     }
 }
-
-// #[test]
-// fn compile_test_program(){
-//     let test_program_path = Path::new("./test-programm");
-
-//     assert!(
-//         test_program_path.exists(),
-//         "Test program path does not exist: {}",
-//         test_program_path.display()
-//     );
-
-//     let output = Command::new("cargo")
-//         .arg("build")
-//         .current_dir(test_program_path)
-//         .output()
-//         .expect("Failed to execute `cargo build`");
-
-//     if output.status.success() {
-//         println!("Test program compiled successfully!");
-//     } else {
-//         panic!(
-//             "Failed to compile test program: {}",
-//             String::from_utf8_lossy(&output.stderr)
-//         );
-//     }
-// }

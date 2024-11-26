@@ -5,8 +5,7 @@ use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use std::io;
 use std::path::Path;
-use nix::unistd::Pid;
-use std::process::{Command, exit};
+use std::process::Command;
 
 
 pub struct Debugger {
