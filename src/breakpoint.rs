@@ -17,7 +17,9 @@ impl Breakpoint{
 
         let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
 
-        ptrace::write(pid, addr as *mut libc::c_void, 0xCC);
+        println!("Original byte: {:x}", original_byte);
+
+        ptrace::write(pid, addr as *mut libc::c_void, 0xCC).unwrap();
     
         match ptrace::read(pid, addr as *mut libc::c_void) {
             Ok(breakpoint_check) => {
@@ -26,7 +28,6 @@ impl Breakpoint{
                 } else {
                     println!("Breakpoint is correctly set.");
                     self.breakpoint.push((addr, original_byte));
-                    self.show_breakpoints();
                 }
             }
             Err(err) => {
@@ -46,15 +47,15 @@ impl Breakpoint{
 
     pub fn show_breakpoints(&self){
         for bp in self.breakpoint.iter(){
-            println!("addr: {}  byte: {}", bp.0, bp.1);
+            println!("addr: {:x}  original byte: {:x}", bp.0, bp.1);
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
-    use std::path::Path;
+    use nix::{sys::ptrace, unistd::Pid};
+    use nix::libc;
 
     use crate::debugger::Debugger;
 
@@ -72,8 +73,20 @@ mod tests {
         let mut debugger = Debugger::new(ls_path.to_string());
         nix::sys::wait::waitpid(debugger.process.pid, None).unwrap();
         
-        // TODO: Parse processes read/write to get a valid address to breakpoint at 
-        // debugger.breakpoint.set_breakpoint(0x1234, debugger.process.pid);
+        let addr: u64 = debugger.process.get_random_rw_memory().unwrap();
+        println!("Found random address: {:x}", addr);
+
+        let original_byte = ptrace::read(debugger.process.pid, addr as *mut libc::c_void).unwrap();
+        println!("Original Byte: {:x}", original_byte);
+        debugger.breakpoint.set_breakpoint(addr, debugger.process.pid);
+        let patched_byte = ptrace::read(debugger.process.pid, addr as *mut libc::c_void).unwrap();
+        println!("Patched Byte: {:x}", patched_byte);
+        if original_byte == patched_byte{
+            panic!(
+                "Original and patched bytes are the same at address {:x}, something went wrong with the breakpoint",
+                addr
+            );       
+        }
     }
 }
 

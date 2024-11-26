@@ -24,5 +24,14 @@ impl Process {
             println!("{}", map);
         }
     }
+
+    pub fn get_random_rw_memory(&self) -> Result<u64, String> {
+        for map in &self.maps{
+            if map.read && map.write {
+                return Ok(map.addr_start)
+            }
+        }
+        Err("no r/w mem found".to_string())
+    }
 }
 

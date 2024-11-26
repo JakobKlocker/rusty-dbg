@@ -5,13 +5,13 @@ use std::fs;
 use std::fmt;
 
 pub struct Map{
-    addr_start: u64,
-    addr_end: u64,
-    read: bool,
-    write: bool,
-    execute: bool,
-    shared: bool,
-    private: bool,
+    pub addr_start: u64,
+    pub addr_end: u64,
+    pub read: bool,
+    pub write: bool,
+    pub execute: bool,
+    pub shared: bool,
+    pub private: bool,
 }
 
 impl Map{
