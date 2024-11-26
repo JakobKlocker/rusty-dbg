@@ -2,6 +2,7 @@ use crate::process;
 use crate::breakpoint;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::sys::ptrace;
+use nix::sys::ptrace::getregs;
 use std::io;
 use std::path::Path;
 use nix::unistd::Pid;
@@ -57,6 +58,7 @@ impl Debugger {
                 }
             },
             Some("continue") => self.cont(),
+            Some("reg") => self.print_registers(),
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
@@ -99,6 +101,13 @@ impl Debugger {
             }
         }
         println!("Debugger run complete.");
+    }
+
+    fn print_registers(&self){
+        match getregs(self.process.pid) {
+            Ok(regs) => println!("Registers: {:?}", regs),
+            Err(err) => println!("Failed to get registers: {}", err),
+        }
     }
 }
 
