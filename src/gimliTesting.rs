@@ -100,18 +100,9 @@ fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<(), gimli::Error> {
     let mut entries = unit.entries();
     while let Some((delta_depth, entry)) = entries.next_dfs()? {
         if entry.tag() == gimli::DW_TAG_subprogram {
-            depth += delta_depth;
-            println!("<{}><{:x}> {}", depth, entry.offset().0, entry.tag());
-
             let mut attrs = entry.attrs();
             while let Some(attr) = attrs.next()? {
                 print!("   {}: {:?}", attr.name(), attr.value());
-                if attr.name() == gimli::DW_AT_linkage_name {
-                    println!(
-                        "Found DW_AT_linkage_name attribute {:?}",
-                        unit.attr_string(attr.value())
-                    );
-                }
                 if let Ok(s) = unit.attr_string(attr.value()) {
                     print!(" '{}'", s.to_string_lossy()?);
                 }
