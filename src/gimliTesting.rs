@@ -68,10 +68,6 @@ fn dump_file(
     // Iterate over the compilation units.
     let mut iter = dwarf.units();
     while let Some(header) = iter.next()? {
-        println!(
-            "Unit at <.debug_info+0x{:x}>",
-            header.offset().as_debug_info_offset().unwrap().0
-        );
         let unit = dwarf.unit(header)?;
         let unit_ref = unit.unit_ref(&dwarf);
         dump_unit(unit_ref)?;
@@ -95,18 +91,37 @@ fn dump_file(
 }
 
 fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<(), gimli::Error> {
-    // Iterate over the Debugging Information Entries (DIEs) in the unit.
     let mut depth = 0;
     let mut entries = unit.entries();
     while let Some((delta_depth, entry)) = entries.next_dfs()? {
         if entry.tag() == gimli::DW_TAG_subprogram {
+            depth += delta_depth;
             let mut attrs = entry.attrs();
+            let mut linkage_name_found = false;
+            let mut linkage_name_string = String::new();
+
             while let Some(attr) = attrs.next()? {
-                print!("   {}: {:?}", attr.name(), attr.value());
-                if let Ok(s) = unit.attr_string(attr.value()) {
-                    print!(" '{}'", s.to_string_lossy()?);
+                if attr.name() == gimli::DW_AT_linkage_name {
+                    // Resolve the string associated with DW_AT_linkage_name
+                    if let Ok(s) = unit.attr_string(attr.value()) {
+                        linkage_name_string = s.to_string_lossy()?.to_string();
+                        linkage_name_found = true;
+                        break;
+                    }
                 }
-                println!();
+            }
+
+            // If the linkage name contains "test_program", print all attributes
+            if linkage_name_found && linkage_name_string.contains("test_program") {
+                println!("Linkage name contains 'test_program', printing all attributes:");
+                let mut attrs = entry.attrs(); // Reiterate over the attributes
+                while let Some(attr) = attrs.next()? {
+                    print!("   {}: {:?}", attr.name(), attr.value());
+                    if let Ok(s) = unit.attr_string(attr.value()) {
+                        print!(" '{}'", s.to_string_lossy()?);
+                    }
+                    println!();
+                }
             }
         }
     }
