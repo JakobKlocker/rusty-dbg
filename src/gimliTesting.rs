@@ -103,10 +103,15 @@ fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<(), gimli::Error> {
             depth += delta_depth;
             println!("<{}><{:x}> {}", depth, entry.offset().0, entry.tag());
 
-            // Iterate over the attributes in the DIE.
             let mut attrs = entry.attrs();
             while let Some(attr) = attrs.next()? {
                 print!("   {}: {:?}", attr.name(), attr.value());
+                if attr.name() == gimli::DW_AT_linkage_name {
+                    println!(
+                        "Found DW_AT_linkage_name attribute {:?}",
+                        unit.attr_string(attr.value())
+                    );
+                }
                 if let Ok(s) = unit.attr_string(attr.value()) {
                     print!(" '{}'", s.to_string_lossy()?);
                 }
