@@ -10,7 +10,7 @@ pub struct FunctionInfo {
 }
 
 impl FunctionInfo {
-    pub fn new(path: String) -> Vec<FunctionInfo> {
+    pub fn new(path: String, debuger_name: String) -> Vec<FunctionInfo> {
         let file = fs::File::open(path).unwrap();
         let mmap = unsafe { memmap2::Mmap::map(&file).unwrap() };
         let object = object::File::parse(&*mmap).unwrap();

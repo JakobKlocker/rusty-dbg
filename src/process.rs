@@ -2,6 +2,7 @@ use crate::map::Map;
 use nix::unistd::Pid;
 use nix::sys::ptrace;
 
+#[derive(Debug)]
 pub struct Process {
     pub pid: Pid,
     pub maps: Vec<Map>,

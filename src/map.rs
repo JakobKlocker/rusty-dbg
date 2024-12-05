@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::fs;
 use std::fmt;
 
+#[derive(Debug)]
 pub struct Map{
     pub addr_start: u64,
     pub addr_end: u64,

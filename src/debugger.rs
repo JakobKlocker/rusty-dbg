@@ -8,6 +8,7 @@ use std::io;
 use std::path::Path;
 use std::process::Command;
 
+#[derive(Debug)]
 pub struct Debugger {
     pub process: Process,
     pub breakpoint: Breakpoint,
@@ -15,13 +16,13 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    pub fn new(input: String) -> Self {
-        let pid = get_pid_from_input(input.clone()); // Using clone to bypass, learn rust better
+    pub fn new(debugee_pid_path: String, debuger_name: String) -> Self {
+        let pid = get_pid_from_input(debugee_pid_path.clone()); // Using clone to bypass, learn rust better
 
         Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
-            functions: FunctionInfo::new(input), // Only works if input is a path currently
+            functions: FunctionInfo::new(debugee_pid_path, debuger_name), // Only works if input is a path currently
         }
     }
 
@@ -106,6 +107,10 @@ impl Debugger {
             Ok(regs) => println!("Registers: {:?}", regs),
             Err(err) => println!("Failed to get registers: {}", err),
         }
+    }
+
+    pub fn print_functions(&self) {
+        println!("{:?}", self.functions);
     }
 }
 
