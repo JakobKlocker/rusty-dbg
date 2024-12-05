@@ -2,7 +2,14 @@ use gimli::Reader as _;
 use object::{Object, ObjectSection};
 use std::{borrow, env, error, fs};
 
-pub fn gimli_test(path: String) {
+#[derive(Debug)]
+pub struct FunctionInfo {
+    name: String,
+    start_addr: u64,
+    end_addr: u64,
+}
+
+pub fn gimli_test(path: String) -> Result<Vec<FunctionInfo>, Box<dyn error::Error>> {
     let file = fs::File::open(path).unwrap();
     let mmap = unsafe { memmap2::Mmap::map(&file).unwrap() };
     let object = object::File::parse(&*mmap).unwrap();
@@ -12,14 +19,14 @@ pub fn gimli_test(path: String) {
         gimli::RunTimeEndian::Big
     };
 
-    dump_file(&object, None, endian).unwrap();
+    dump_file(&object, None, endian)
 }
 
 fn dump_file(
     object: &object::File,
     dwp_object: Option<&object::File>,
     endian: gimli::RunTimeEndian,
-) -> Result<(), Box<dyn error::Error>> {
+) -> Result<Vec<FunctionInfo>, Box<dyn error::Error>> {
     // Load a `Section` that may own its data.
     fn load_section<'data>(
         object: &object::File<'data>,
@@ -66,79 +73,75 @@ fn dump_file(
         .transpose()?;
 
     // Iterate over the compilation units.
+
+    let mut all_functions = Vec::new();
+
     let mut iter = dwarf.units();
     while let Some(header) = iter.next()? {
         let unit = dwarf.unit(header)?;
         let unit_ref = unit.unit_ref(&dwarf);
-        dump_unit(unit_ref)?;
-
-        // Check for a DWO unit.
-        let Some(dwp) = &dwp else { continue };
-        let Some(dwo_id) = unit.dwo_id else { continue };
-        println!("DWO Unit ID {:x}", dwo_id.0);
-        let Some(dwo) = dwp.find_cu(dwo_id, &dwarf)? else {
-            continue;
-        };
-        let Some(header) = dwo.units().next()? else {
-            continue;
-        };
-        let unit = dwo.unit(header)?;
-        let unit_ref = unit.unit_ref(&dwo);
-        dump_unit(unit_ref)?;
+        all_functions.extend(dump_unit(unit_ref)?);
     }
-
-    Ok(())
+    Ok(all_functions)
 }
 
-fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<(), gimli::Error> {
-    let mut depth = 0;
+fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<Vec<FunctionInfo>, gimli::Error> {
+    let mut functions = Vec::new();
     let mut entries = unit.entries();
+
     while let Some((delta_depth, entry)) = entries.next_dfs()? {
         if entry.tag() == gimli::DW_TAG_subprogram {
-            depth += delta_depth;
             let mut attrs = entry.attrs();
             let mut linkage_name_found = false;
             let mut linkage_name_string = String::new();
+            let mut name = String::new();
+            let mut start_address = None;
+            let mut end_address = None;
 
             while let Some(attr) = attrs.next()? {
-                if attr.name() == gimli::DW_AT_linkage_name {
-                    // Resolve the string associated with DW_AT_linkage_name
-                    if let Ok(s) = unit.attr_string(attr.value()) {
-                        linkage_name_string = s.to_string_lossy()?.to_string();
-                        linkage_name_found = true;
-                        break;
+                match attr.name() {
+                    gimli::DW_AT_linkage_name => {
+                        if let Ok(s) = unit.attr_string(attr.value()) {
+                            linkage_name_string = s.to_string_lossy()?.to_string();
+                            linkage_name_found = true;
+                        }
                     }
+                    gimli::DW_AT_name => {
+                        if let Ok(s) = unit.attr_string(attr.value()) {
+                            name = s.to_string_lossy()?.to_string();
+                        }
+                    }
+                    gimli::DW_AT_low_pc => {
+                        if let gimli::AttributeValue::Addr(addr) = attr.value() {
+                            start_address = Some(addr);
+                        }
+                    }
+                    gimli::DW_AT_high_pc => match attr.value() {
+                        gimli::AttributeValue::Addr(addr) => end_address = Some(addr),
+                        gimli::AttributeValue::Udata(size) => {
+                            if let Some(start) = start_address {
+                                end_address = Some(start + size);
+                            }
+                        }
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
 
-            // If the linkage name contains "test_program", print all attributes
+            // If the linkage name contains "test_program", collect the data
             if linkage_name_found && linkage_name_string.contains("test_program") {
-                println!("Linkage name contains 'test_program', printing all attributes:");
-                let mut attrs = entry.attrs(); // Reiterate over the attributes
-                while let Some(attr) = attrs.next()? {
-                    print!("   {}: {:?}", attr.name(), attr.value());
-                    if let Ok(s) = unit.attr_string(attr.value()) {
-                        print!(" '{}'", s.to_string_lossy()?);
-                    }
-                    println!();
+                if let (Some(start), Some(end)) = (start_address, end_address) {
+                    functions.push(FunctionInfo {
+                        name: name.clone(),
+                        start_addr: start,
+                        end_addr: end,
+                    });
                 }
             }
         }
     }
-    Ok(())
-}
-
-#[derive(Debug, Default)]
-struct RelocationMap(object::read::RelocationMap);
-
-impl<'a> gimli::read::Relocate for &'a RelocationMap {
-    fn relocate_address(&self, offset: usize, value: u64) -> gimli::Result<u64> {
-        Ok(self.0.relocate(offset as u64, value))
-    }
-
-    fn relocate_offset(&self, offset: usize, value: usize) -> gimli::Result<usize> {
-        <usize as gimli::ReaderOffset>::from_u64(self.0.relocate(offset as u64, value as u64))
-    }
+    Ok(functions)
 }
 
 // The section data that will be stored in `DwarfSections` and `DwarfPackageSections`.
@@ -152,3 +155,16 @@ struct Section<'data> {
 // If you don't need relocations, you can use `gimli::EndianSlice` directly.
 type Reader<'data> =
     gimli::RelocateReader<gimli::EndianSlice<'data, gimli::RunTimeEndian>, &'data RelocationMap>;
+
+#[derive(Debug, Default)]
+struct RelocationMap(object::read::RelocationMap);
+
+impl<'a> gimli::read::Relocate for &'a RelocationMap {
+    fn relocate_address(&self, offset: usize, value: u64) -> gimli::Result<u64> {
+        Ok(self.0.relocate(offset as u64, value))
+    }
+
+    fn relocate_offset(&self, offset: usize, value: usize) -> gimli::Result<usize> {
+        <usize as gimli::ReaderOffset>::from_u64(self.0.relocate(offset as u64, value as u64))
+    }
+}
