@@ -16,7 +16,6 @@ impl Process {
         ptrace::attach(pid).expect("Failed to attach to process");
         println!("Successfully attached to PID: {}", pid);
         let maps = Map::new(pid).expect("Failed to get maps");
-        Process::get_base_addr_from_map(pid);
         Process { pid, maps }
     }
 
@@ -35,7 +34,7 @@ impl Process {
         Err("no r/w mem found".to_string())
     }
 
-    pub fn get_program_name_from_pid(pid: Pid) -> io::Result<String> {
+    pub fn get_program_name_from_pid(&self, pid: Pid) -> io::Result<String> {
         let file_path = format!("/proc/{}/comm", pid);
         let file = fs::File::open(file_path)?;
         let mut buff_reader = BufReader::new(file);
@@ -46,7 +45,20 @@ impl Process {
         Ok(process_name.trim_end().to_string())
     }
 
-    pub fn get_base_addr_from_map(pid: Pid) -> bool {
-        
+    pub fn get_base_addr_from_map(&self) -> Option<u64> {
+        match self.get_program_name_from_pid(self.pid) {
+            Ok(programm_name) => self
+                .maps
+                .iter()
+                .find(|map| map.file_path.contains(&programm_name))
+                .map(|map| {
+                    println!("Base is probably: {:x}", map.addr_start);
+                    map.addr_start
+                }),
+            Err(e) => {
+                eprintln!("Failed to get program name: {}", e);
+                None
+            }
+        }
     }
 }
