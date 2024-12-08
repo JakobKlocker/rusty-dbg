@@ -40,15 +40,18 @@ impl Breakpoint {
         }
     }
 
-    pub fn remove_breakpoint(&self, addr: u64, pid: Pid) -> bool {
-        if let Some((saved_addr, saved_byte)) = self.breakpoint.iter().find(|(a, _)| *a == addr) {
-            ptrace::write(pid, *saved_addr as *mut libc::c_void, *saved_byte as i64).unwrap();
+    pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {
+        if let Some((pos)) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
+            let (saved_addr, saved_byte) = self.breakpoint[pos];
+            ptrace::write(pid, saved_addr as *mut libc::c_void, saved_byte as i64).unwrap();
             println!(
                 "Breakpoint removed and original byte restored at: {:#x}",
                 saved_addr
             );
-            true;
+            self.breakpoint.remove(pos);
+            return true;
         }
+        println!("Breakpoing doesn't exist");
         return false;
     }
 

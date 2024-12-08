@@ -23,7 +23,6 @@ fn main() {
         debugee_pid_path.to_string(),
         debuger_process_name.to_string(),
     );
-    // dbg.process.print_map_infos();
     dbg.print_functions();
     dbg.run();
 }

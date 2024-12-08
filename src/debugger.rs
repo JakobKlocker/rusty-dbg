@@ -56,6 +56,23 @@ impl Debugger {
                     println!("No seconda argument provided for breakpoint");
                 }
             }
+            Some("rm-bp") => {
+                if let Some(arg) = parts.next() {
+                    match u64::from_str_radix(arg, 16) {
+                        Ok(breakpoint_addr) => {
+                            println!("remove {}", breakpoint_addr);
+                            self.breakpoint
+                                .remove_breakpoint(breakpoint_addr, self.process.pid);
+                        }
+                        Err(e) => {
+                            println!("rm breakpoint failed: {}", e);
+                        }
+                    }
+                } else {
+                    println!("No seconda argument provided for rm breakpoint");
+                }
+            }
+            Some("show-bp") => self.breakpoint.show_breakpoints(),
             Some("continue") => self.cont(),
             Some("reg") => self.print_registers(),
             Some("exit") => self.exit(),
@@ -83,8 +100,10 @@ impl Debugger {
                 }
                 Ok(WaitStatus::Stopped(_, signal)) => {
                     println!("Process stopped by signal: {:?}", signal);
-                    let command = self.get_command();
-                    self.handle_command(command.as_str());
+                    while (true) {
+                        let command = self.get_command();
+                        self.handle_command(command.as_str());
+                    }
                 }
                 Ok(WaitStatus::Signaled(_, signal, _)) => {
                     println!("Process terminated by signal: {:?}", signal);
