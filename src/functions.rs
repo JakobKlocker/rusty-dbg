@@ -4,9 +4,9 @@ use std::{borrow, env, error, fs};
 
 #[derive(Debug)]
 pub struct FunctionInfo {
-    name: String,
-    start_addr: u64,
-    end_addr: u64,
+    pub name: String,
+    pub start_addr: u64,
+    pub end_addr: u64,
 }
 
 impl FunctionInfo {

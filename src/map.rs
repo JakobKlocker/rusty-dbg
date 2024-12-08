@@ -5,7 +5,7 @@ use std::fs;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Map{
+pub struct Map {
     pub addr_start: u64,
     pub addr_end: u64,
     pub read: bool,
@@ -13,6 +13,7 @@ pub struct Map{
     pub execute: bool,
     pub shared: bool,
     pub private: bool,
+    pub file_path: String,
 }
 
 impl Map{
@@ -56,7 +57,8 @@ impl Map{
                     _ => (),
                 }
             }
-    
+            let file_path = parts.last().unwrap_or(&"");
+
             Ok(Map {
                 addr_start,
                 addr_end,
@@ -65,7 +67,8 @@ impl Map{
                 execute,
                 shared,
                 private,
-            })
+                file_path: file_path.to_string(),
+                })
         }
 
         pub fn get_maps_info(pid: Pid) -> Result<Vec<String>, Box<dyn Error>>{

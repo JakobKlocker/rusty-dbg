@@ -48,8 +48,22 @@ impl Debugger {
                             self.breakpoint
                                 .set_breakpoint(breakpoint_addr, self.process.pid);
                         }
-                        Err(e) => {
-                            println!("breakpoint failed: {}", e);
+                        Err(_) => {
+                            if let Some(function) =
+                                self.functions.iter().find(|function| function.name == arg)
+                            {
+                                println!(
+                                    "Found function, setting bp on {}, addr: {}",
+                                    arg, function.start_addr
+                                );
+                                self.breakpoint
+                                    .set_breakpoint(function.start_addr, self.process.pid);
+                            } else {
+                                println!(
+                                    "Breakpoint failed, has to be addr or function name: {}",
+                                    arg
+                                );
+                            }
                         }
                     }
                 } else {
