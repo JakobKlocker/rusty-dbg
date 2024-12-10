@@ -56,8 +56,10 @@ impl Debugger {
                                     "Found function, setting bp on {}, addr: {}",
                                     arg, function.start_addr
                                 );
-                                self.breakpoint
-                                    .set_breakpoint(function.start_addr, self.process.pid);
+                                self.breakpoint.set_breakpoint(
+                                    function.start_addr + self.process.base_addr,
+                                    self.process.pid,
+                                );
                             } else {
                                 println!(
                                     "Breakpoint failed, has to be addr or function name: {}",

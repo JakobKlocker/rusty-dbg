@@ -8,6 +8,7 @@ use std::io::{self, BufRead, BufReader};
 pub struct Process {
     pub pid: Pid,
     pub maps: Vec<Map>,
+    pub base_addr: u64,
 }
 
 impl Process {
@@ -16,7 +17,11 @@ impl Process {
         ptrace::attach(pid).expect("Failed to attach to process");
         println!("Successfully attached to PID: {}", pid);
         let maps = Map::new(pid).expect("Failed to get maps");
-        Process { pid, maps }
+        Process {
+            pid,
+            maps,
+            base_addr: 0,
+        }
     }
 
     pub fn print_map_infos(&self) {
@@ -45,7 +50,7 @@ impl Process {
         Ok(process_name.trim_end().to_string())
     }
 
-    pub fn get_base_addr_from_map(&self) -> Option<u64> {
+    pub fn get_base_addr_from_map(&mut self) -> Option<u64> {
         match self.get_program_name_from_pid(self.pid) {
             Ok(programm_name) => self
                 .maps
@@ -53,6 +58,7 @@ impl Process {
                 .find(|map| map.file_path.contains(&programm_name))
                 .map(|map| {
                     println!("Base is probably: {:x}", map.addr_start);
+                    self.base_addr = map.addr_start;
                     map.addr_start
                 }),
             Err(e) => {

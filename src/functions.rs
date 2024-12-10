@@ -104,6 +104,14 @@ impl FunctionInfo {
                 let mut end_address = None;
 
                 while let Some(attr) = attrs.next()? {
+                    let attr_name = format!("{:?}", attr.name());
+                    println!("   {}: {:?}", attr.name(), attr.value());
+
+                    if let Ok(s) = unit.attr_string(attr.value()) {
+                        print!(" '{}'", s.to_string_lossy()?);
+                    }
+
+                    println!("");
                     match attr.name() {
                         gimli::DW_AT_linkage_name => {
                             if let Ok(s) = unit.attr_string(attr.value()) {
@@ -133,7 +141,6 @@ impl FunctionInfo {
                         _ => {}
                     }
                 }
-
                 // If the linkage name contains "test_program", collect the data
                 if linkage_name_found && linkage_name_string.contains("test_program") {
                     if let (Some(start), Some(end)) = (start_address, end_address) {
