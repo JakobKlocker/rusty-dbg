@@ -22,7 +22,7 @@ impl Debugger {
         Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
-            functions: FunctionInfo::new(debugee_pid_path, debuger_name), // Only works if input is a path currently
+            functions: FunctionInfo::new(debugee_pid_path, debuger_name), 
         }
     }
 
@@ -39,12 +39,19 @@ impl Debugger {
     fn handle_command(&mut self, command: &str) {
         let mut parts = command.split_whitespace();
         let command_word = parts.next();
+
         match command_word {
             Some("breakpoint") => {
                 if let Some(arg) = parts.next() {
+                     let arg  = if arg.starts_with("0x")
+                    {
+                        &arg[2..]
+                    } else{
+                        arg
+                    };
                     match u64::from_str_radix(arg, 16) {
                         Ok(breakpoint_addr) => {
-                            println!("{}", breakpoint_addr);
+                            println!("{:#x}", breakpoint_addr);
                             self.breakpoint
                                 .set_breakpoint(breakpoint_addr, self.process.pid);
                         }
@@ -53,7 +60,7 @@ impl Debugger {
                                 self.functions.iter().find(|function| function.name == arg)
                             {
                                 println!(
-                                    "Found function, setting bp on {}, addr: {}",
+                                    "Found function, setting bp on {}, addr: {:#x}",
                                     arg, function.start_addr
                                 );
                                 self.breakpoint.set_breakpoint(
@@ -74,7 +81,13 @@ impl Debugger {
             }
             Some("rm-bp") => {
                 if let Some(arg) = parts.next() {
-                    match u64::from_str_radix(arg, 16) {
+                    let arg  = if arg.starts_with("0x")
+                    {
+                        &arg[2..]
+                    } else{
+                        arg
+                    };
+                  match u64::from_str_radix(arg, 16) {
                         Ok(breakpoint_addr) => {
                             println!("remove {}", breakpoint_addr);
                             self.breakpoint
@@ -116,7 +129,7 @@ impl Debugger {
                 }
                 Ok(WaitStatus::Stopped(_, signal)) => {
                     println!("Process stopped by signal: {:?}", signal);
-                    while (true) {
+                    loop {
                         let command = self.get_command();
                         self.handle_command(command.as_str());
                     }

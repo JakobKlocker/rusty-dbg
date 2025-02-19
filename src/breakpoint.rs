@@ -14,7 +14,7 @@ impl Breakpoint {
     }
 
     pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) {
-        println!("add: {}  pid: {}", addr, pid);
+        println!("add: {:#x}  pid: {}", addr, pid);
 
         let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
 
@@ -57,7 +57,7 @@ impl Breakpoint {
 
     pub fn show_breakpoints(&self) {
         for bp in self.breakpoint.iter() {
-            println!("addr: {:x}  original byte: {:x}", bp.0, bp.1);
+            println!("addr: {:#x}  original byte: {:x}", bp.0, bp.1);
         }
     }
 }

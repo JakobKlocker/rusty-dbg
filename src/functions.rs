@@ -11,6 +11,7 @@ pub struct FunctionInfo {
 
 impl FunctionInfo {
     pub fn new(path: String, debuger_name: String) -> Vec<FunctionInfo> {
+        println!("debuger_name: {}", debuger_name); // Debg. name probably not needed anymore like this
         let file = fs::File::open(path).unwrap();
         let mmap = unsafe { memmap2::Mmap::map(&file).unwrap() };
         let object = object::File::parse(&*mmap).unwrap();
@@ -104,12 +105,12 @@ impl FunctionInfo {
                 let mut end_address = None;
 
                 while let Some(attr) = attrs.next()? {
-                    // let attr_name = format!("{:?}", attr.name());
-                    // println!("   {}: {:?}", attr.name(), attr.value());
+          //          let attr_name = format!("{:?}", attr.name());
+          //          println!("   {}: {:?}", attr.name(), attr.value());
 
-                    // if let Ok(s) = unit.attr_string(attr.value()) {
-                    //     print!(" '{}'", s.to_string_lossy()?);
-                    // }
+          //          if let Ok(s) = unit.attr_string(attr.value()) {
+          //              print!(" '{}'", s.to_string_lossy()?);
+          //           }
 
                     // println!("");
                     match attr.name() {
@@ -141,15 +142,12 @@ impl FunctionInfo {
                         _ => {}
                     }
                 }
-                // If the linkage name contains "test_program", collect the data
-                if linkage_name_found && linkage_name_string.contains("test_program") {
-                    if let (Some(start), Some(end)) = (start_address, end_address) {
-                        functions.push(FunctionInfo {
-                            name: name.clone(),
-                            start_addr: start,
-                            end_addr: end,
-                        });
-                    }
+                if let (Some(start), Some(end)) = (start_address, end_address) {
+                    functions.push(FunctionInfo {
+                        name: name.clone(),
+                        start_addr: start,
+                        end_addr: end,
+                    });
                 }
             }
         }
