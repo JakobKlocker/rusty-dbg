@@ -1,12 +1,16 @@
 use gimli::Reader as _;
 use object::{Object, ObjectSection};
+use std::num::NonZeroUsize;
 use std::{borrow, env, error, fs};
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct FunctionInfo {
     pub name: String,
     pub start_addr: u64,
     pub end_addr: u64,
+    pub file_path: Option<String>,
+    pub line_number: Option<u64>,
 }
 
 impl FunctionInfo {
@@ -94,6 +98,7 @@ impl FunctionInfo {
     fn dump_unit(unit: gimli::UnitRef<Reader>) -> Result<Vec<FunctionInfo>, gimli::Error> {
         let mut functions = Vec::new();
         let mut entries = unit.entries();
+        let line_program = unit.line_program.clone();
 
         while let Some((delta_depth, entry)) = entries.next_dfs()? {
             if entry.tag() == gimli::DW_TAG_subprogram {
@@ -103,14 +108,16 @@ impl FunctionInfo {
                 let mut name = String::new();
                 let mut start_address = None;
                 let mut end_address = None;
+                let mut file_path = None;
+                let mut line_number = None;
 
                 while let Some(attr) = attrs.next()? {
-          //          let attr_name = format!("{:?}", attr.name());
-          //          println!("   {}: {:?}", attr.name(), attr.value());
+                    //          let attr_name = format!("{:?}", attr.name());
+                    //          println!("   {}: {:?}", attr.name(), attr.value());
 
-          //          if let Ok(s) = unit.attr_string(attr.value()) {
-          //              print!(" '{}'", s.to_string_lossy()?);
-          //           }
+                    //          if let Ok(s) = unit.attr_string(attr.value()) {
+                    //              print!(" '{}'", s.to_string_lossy()?);
+                    //           }
 
                     // println!("");
                     match attr.name() {
@@ -143,10 +150,35 @@ impl FunctionInfo {
                     }
                 }
                 if let (Some(start), Some(end)) = (start_address, end_address) {
+                    if let Some(line_program) = &line_program {
+                        let mut rows = line_program.clone().rows();
+                        while let Ok(Some((_, row))) = rows.next_row() {
+                            let addr = row.address();
+                            let line_number = row.line().map(|x| x.get());
+                            let is_statement = row.is_stmt(); // Check if this row is a statement
+
+                            let file_index = row.file_index();
+                            let mut file_name = "<unknown>".to_string();
+                            
+                            // get filename here next
+
+                            }
+                            
+
+                            /*                             println!(
+                                "Address: {:#x}, File: {}, Line: {:?}, Is Statement: {}",
+                                addr, file_name, line_number, is_statement
+                            ); */
+                        }
+                    }
+                }
+                if let (Some(start), Some(end)) = (start_address, end_address) {
                     functions.push(FunctionInfo {
                         name: name.clone(),
                         start_addr: start,
                         end_addr: end,
+                        file_path,
+                        line_number,
                     });
                 }
             }
