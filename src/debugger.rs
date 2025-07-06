@@ -1,9 +1,12 @@
 use crate::breakpoint::*;
 use crate::functions::*;
 use crate::process::*;
+use capstone::prelude::*;
+use libc::{iovec, pid_t, process_vm_readv};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::wait::{waitpid, WaitStatus};
+use nix::unistd::Pid;
 use std::io;
 use std::path::Path;
 use std::process::Command;
@@ -23,6 +26,55 @@ impl Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
             functions: FunctionInfo::new(debugee_pid_path, debuger_name),
+        }
+    }
+
+    fn read_process_memory(&self, pid: Pid, addr: usize, buf: &mut [u8]) -> bool {
+        let local = iovec {
+            iov_base: buf.as_mut_ptr() as *mut _,
+            iov_len: buf.len(),
+        };
+
+        let remote = iovec {
+            iov_base: addr as *mut _,
+            iov_len: buf.len(),
+        };
+
+        let result = unsafe { process_vm_readv(pid.as_raw() as pid_t, &local, 1, &remote, 1, 0) };
+
+        result == buf.len() as isize
+    }
+
+    fn dissasembl_instructions(&self) {
+        let cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Att)
+            .detail(true)
+            .build()
+            .expect("Failed to create Capstone object");
+
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        let num_bytes = 64;
+        let mut code = vec![0u8; num_bytes];
+
+        if !self.read_process_memory(self.process.pid, rip as usize, &mut code) {
+            println!("Failed to read memory at 0x{:x}", rip);
+            return;
+        }
+        println!("{:?}", code);
+        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
+
+        for i in insns.iter() {
+            println!(
+                "0x{:x}: {}\t{}",
+                i.address(),
+                i.mnemonic().unwrap_or(""),
+                i.op_str().unwrap_or("")
+            );
         }
     }
 
@@ -75,7 +127,7 @@ impl Debugger {
                         }
                     }
                 } else {
-                    println!("No seconda argument provided for breakpoint");
+                    println!("No second argument provided for breakpoint");
                 }
             }
             Some("rm-bp") => {
@@ -100,9 +152,10 @@ impl Debugger {
                 }
             }
             Some("step") => ptrace::step(self.process.pid, None).expect("Single-step failed"),
+            Some("instr") => self.dissasembl_instructions(),
 
             Some("show-bp") => self.breakpoint.show_breakpoints(),
-            Some("continue") => self.cont(),
+            Some("cont") => self.cont(),
             Some("regs") => self.print_registers(),
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
