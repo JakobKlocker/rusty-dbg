@@ -17,12 +17,12 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new(debugee_pid_path: String, debuger_name: String) -> Self {
-        let pid = get_pid_from_input(debugee_pid_path.clone()); 
+        let pid = get_pid_from_input(debugee_pid_path.clone());
 
         Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
-            functions: FunctionInfo::new(debugee_pid_path, debuger_name), 
+            functions: FunctionInfo::new(debugee_pid_path, debuger_name),
         }
     }
 
@@ -41,12 +41,11 @@ impl Debugger {
         let command_word = parts.next();
 
         match command_word {
-            Some("breakpoint") => {
+            Some("bp") => {
                 if let Some(arg) = parts.next() {
-                     let arg  = if arg.starts_with("0x")
-                    {
+                    let arg = if arg.starts_with("0x") {
                         &arg[2..]
-                    } else{
+                    } else {
                         arg
                     };
                     match u64::from_str_radix(arg, 16) {
@@ -81,13 +80,12 @@ impl Debugger {
             }
             Some("rm-bp") => {
                 if let Some(arg) = parts.next() {
-                    let arg  = if arg.starts_with("0x")
-                    {
+                    let arg = if arg.starts_with("0x") {
                         &arg[2..]
-                    } else{
+                    } else {
                         arg
                     };
-                  match u64::from_str_radix(arg, 16) {
+                    match u64::from_str_radix(arg, 16) {
                         Ok(breakpoint_addr) => {
                             println!("remove {}", breakpoint_addr);
                             self.breakpoint
@@ -101,9 +99,11 @@ impl Debugger {
                     println!("No seconda argument provided for rm breakpoint");
                 }
             }
+            Some("step") => ptrace::step(self.process.pid, None).expect("Single-step failed"),
+
             Some("show-bp") => self.breakpoint.show_breakpoints(),
             Some("continue") => self.cont(),
-            Some("reg") => self.print_registers(),
+            Some("regs") => self.print_registers(),
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
