@@ -5,6 +5,7 @@ use capstone::prelude::*;
 use libc::{iovec, pid_t, process_vm_readv};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
+use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 use std::io;
@@ -26,6 +27,17 @@ impl Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
             functions: FunctionInfo::new(debugee_pid_path, debuger_name),
+        }
+    }
+
+    fn interactive_loop(&mut self) {
+        loop {
+            let command = self.get_command();
+            if command == "continue" || command == "cont" {
+                self.cont();
+                break;
+            }
+            self.handle_command(&command);
         }
     }
 
@@ -99,7 +111,7 @@ impl Debugger {
         }
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
         let next_inst = insns.iter().next().unwrap();
-        if next_inst.mnemonic() == Some("call"){
+        if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
             println!("next addr: {}", next_addr);
             self.breakpoint.set_breakpoint(next_addr, self.process.pid);
@@ -203,6 +215,17 @@ impl Debugger {
         println!("Exiting the debugger...");
         std::process::exit(0);
     }
+    
+    fn handle_sigtrap(&mut self){ // remove BP and replace with org. once hit
+        let mut regs = getregs(self.process.pid).unwrap();
+        let cur_addr = regs.rip - 1;
+        if self.breakpoint.is_breakpoint(cur_addr){
+            self.breakpoint.remove_breakpoint(cur_addr, self.process.pid);
+            regs.rip -= 1;
+            setregs(self.process.pid, regs);
+            ptrace::step(self.process.pid, None).expect("Single-step after breakpoint failed");
+        }
+    }
 
     pub fn run(&mut self) {
         loop {
@@ -213,12 +236,13 @@ impl Debugger {
                     break;
                 }
                 Ok(WaitStatus::Stopped(_, signal)) => {
-                    println!("Process stopped by signal: {:?}", signal);
-                    loop {
-                        let command = self.get_command();
-                        self.handle_command(command.as_str());
+                    let regs = getregs(self.process.pid).unwrap();
+                    println!("Process stopped by signal: {:?} at addr: 0x{:x}", signal, regs.rip - 1);
+                    if signal == nix::sys::signal::Signal::SIGTRAP {
+                        self.handle_sigtrap();
                     }
-                }
+                    self.interactive_loop();
+               }
                 Ok(WaitStatus::Signaled(_, signal, _)) => {
                     println!("Process terminated by signal: {:?}", signal);
                     break;

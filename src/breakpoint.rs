@@ -12,40 +12,93 @@ impl Breakpoint {
             breakpoint: Vec::new(),
         }
     }
-    
-// 
 
     pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) {
         println!("add: {:#x}  pid: {}", addr, pid);
 
-        let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
+        let aligned_addr = addr & !0x7; // Align to word boundary
+        let offset = addr - aligned_addr;
+
+        let word = ptrace::read(pid, aligned_addr as *mut libc::c_void)
+            .expect("Failed to read word at aligned address") as u64;
+
+        let original_byte = ((word >> (offset * 8)) & 0xFF) as u8;
+
+        let mask = !(0xFFu64 << (offset * 8));
+        let patched = (word & mask) | (0xCCu64 << (offset * 8));
+
+        ptrace::write(
+            pid,
+            aligned_addr as *mut libc::c_void,
+            patched as libc::c_long,
+        )
+        .expect("Failed to write breakpoint");
 
         println!("Original byte: {:x}", original_byte);
-
-        ptrace::write(pid, addr as *mut libc::c_void, 0xCC).unwrap();
-
-        match ptrace::read(pid, addr as *mut libc::c_void) {
-            Ok(breakpoint_check) => {
-                if (breakpoint_check & 0xFF) != 0xCC {
-                    println!(
-                        "Breakpoint was not written correctly: 0x{:x}",
-                        breakpoint_check
-                    );
-                } else {
-                    println!("Breakpoint is correctly set.");
-                    self.breakpoint.push((addr, original_byte));
-                }
-            }
-            Err(err) => {
-                eprintln!("Error: {}", err);
-            }
-        }
+        self.breakpoint.push((addr, original_byte));
     }
 
+    //pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) {
+    //    println!("add: {:#x}  pid: {}", addr, pid);
+
+    //    let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap() as u8;
+
+    //    println!("Original byte: {:x}", original_byte);
+
+    //    ptrace::write(pid, addr as *mut libc::c_void, 0xCC).unwrap();
+
+    //    match ptrace::read(pid, addr as *mut libc::c_void) {
+    //        Ok(breakpoint_check) => {
+    //            if (breakpoint_check & 0xFF) != 0xCC {
+    //                println!(
+    //                    "Breakpoint was not written correctly: 0x{:x}",
+    //                    breakpoint_check
+    //                );
+    //            } else {
+    //                println!("Breakpoint is correctly set.");
+    //                self.breakpoint.push((addr, original_byte));
+    //            }
+    //        }
+    //        Err(err) => {
+    //            eprintln!("Error: {}", err);
+    //        }
+    //    }
+    //}
+
+    //    pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {
+    //        if let Some((pos)) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
+    //            let (saved_addr, saved_byte) = self.breakpoint[pos];
+    //            ptrace::write(pid, saved_addr as *mut libc::c_void, saved_byte as i64).unwrap();
+    //            println!(
+    //                "Breakpoint removed and original byte restored at: {:#x}",
+    //                saved_addr
+    //            );
+    //            self.breakpoint.remove(pos);
+    //            return true;
+    //        }
+    //        println!("Breakpoing doesn't exist");
+    //        return false;
+    //    }
     pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {
-        if let Some((pos)) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
+        if let Some(pos) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
             let (saved_addr, saved_byte) = self.breakpoint[pos];
-            ptrace::write(pid, saved_addr as *mut libc::c_void, saved_byte as i64).unwrap();
+
+            let aligned_addr = saved_addr & !0x7;
+            let offset = saved_addr - aligned_addr;
+
+            let word = ptrace::read(pid, aligned_addr as *mut libc::c_void)
+                .expect("Failed to read memory") as u64;
+
+            let mask = !(0xFFu64 << (offset * 8));
+            let patched = (word & mask) | ((saved_byte as u64) << (offset * 8));
+
+            ptrace::write(
+                pid,
+                aligned_addr as *mut libc::c_void,
+                patched as libc::c_long,
+            )
+            .expect("Failed to write original byte back");
+
             println!(
                 "Breakpoint removed and original byte restored at: {:#x}",
                 saved_addr
@@ -53,12 +106,13 @@ impl Breakpoint {
             self.breakpoint.remove(pos);
             return true;
         }
-        println!("Breakpoing doesn't exist");
-        return false;
+
+        println!("Breakpoint doesn't exist");
+        false
     }
-    
-    pub fn is_breakpoint(&self, addr:u64){
-        self.breakpoint.iter().any(|(a, )| *a == addr)
+
+    pub fn is_breakpoint(&self, addr: u64) -> bool {
+        self.breakpoint.iter().any(|(a, _)| *a == addr)
     }
 
     pub fn show_breakpoints(&self) {
