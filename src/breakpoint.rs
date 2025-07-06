@@ -56,6 +56,10 @@ impl Breakpoint {
         println!("Breakpoing doesn't exist");
         return false;
     }
+    
+    pub fn is_breakpoint(&self, addr:u64){
+        self.breakpoint.iter().any(|(a, )| *a == addr)
+    }
 
     pub fn show_breakpoints(&self) {
         for bp in self.breakpoint.iter() {

@@ -49,7 +49,7 @@ impl Debugger {
         let cs = Capstone::new()
             .x86()
             .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Att)
+            .syntax(arch::x86::ArchSyntax::Intel)
             .detail(true)
             .build()
             .expect("Failed to create Capstone object");
@@ -65,7 +65,6 @@ impl Debugger {
             println!("Failed to read memory at 0x{:x}", rip);
             return;
         }
-        println!("{:?}", code);
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
 
         for i in insns.iter() {
@@ -75,6 +74,38 @@ impl Debugger {
                 i.mnemonic().unwrap_or(""),
                 i.op_str().unwrap_or("")
             );
+        }
+    }
+
+    fn step_over(&mut self) {
+        let cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Intel)
+            .detail(true)
+            .build()
+            .expect("Failed to create Capstone object");
+
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        let num_bytes = 10;
+        let mut code = vec![0u8; num_bytes];
+
+        if !self.read_process_memory(self.process.pid, rip as usize, &mut code) {
+            println!("Failed to read memory at 0x{:x}", rip);
+            return;
+        }
+        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
+        let next_inst = insns.iter().next().unwrap();
+        if next_inst.mnemonic() == Some("call"){
+            let next_addr = rip + next_inst.len() as u64;
+            println!("next addr: {}", next_addr);
+            self.breakpoint.set_breakpoint(next_addr, self.process.pid);
+            self.cont();
+        } else {
+            ptrace::step(self.process.pid, None).expect("Single-step failed");
         }
     }
 
@@ -152,6 +183,7 @@ impl Debugger {
                 }
             }
             Some("step") => ptrace::step(self.process.pid, None).expect("Single-step failed"),
+            Some("over") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
             Some("show-bp") => self.breakpoint.show_breakpoints(),
