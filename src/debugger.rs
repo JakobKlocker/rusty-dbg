@@ -17,7 +17,7 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new(debugee_pid_path: String, debuger_name: String) -> Self {
-        let pid = get_pid_from_input(debugee_pid_path.clone()); // Using clone to bypass, learn rust better
+        let pid = get_pid_from_input(debugee_pid_path.clone()); 
 
         Debugger {
             process: Process::attach(pid),
@@ -61,10 +61,10 @@ impl Debugger {
                             {
                                 println!(
                                     "Found function, setting bp on {}, addr: {:#x}",
-                                    arg, function.start_addr
+                                    arg, function.offset
                                 );
                                 self.breakpoint.set_breakpoint(
-                                    function.start_addr + self.process.base_addr,
+                                    function.offset + self.process.base_addr,
                                     self.process.pid,
                                 );
                             } else {
