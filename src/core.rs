@@ -1,7 +1,6 @@
 use crate::breakpoint::*;
 use crate::functions::*;
 use crate::process::*;
-use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
@@ -61,7 +60,7 @@ impl Debugger {
                 .remove_breakpoint(cur_addr, self.process.pid);
             regs.rip -= 1;
             let _ = setregs(self.process.pid, regs);
-            ptrace::step(self.process.pid, None).expect("Single-step after breakpoint failed");
+            //ptrace::step(self.process.pid, None).expect("Single-step after breakpoint failed");
         }
     }
 

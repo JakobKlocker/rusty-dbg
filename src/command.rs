@@ -154,6 +154,9 @@ impl<'a> CommandHandler<'a> {
             println!("Failed to read memory at 0x{:x}", rip);
             return;
         }
+        
+        println!("{:?}", code);
+
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
 
         for i in insns.iter() {
