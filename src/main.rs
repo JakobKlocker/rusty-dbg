@@ -7,9 +7,7 @@ mod map;
 mod memory;
 mod process;
 
-use crate::dwarf::*;
-use object::{Object, ObjectSection};
-use std::{borrow, env, error, fs, path};
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,6 +25,5 @@ fn main() {
     );
 
     dbg.process.get_base_addr_from_map();
-    //dwarf testing
     dbg.run();
 }

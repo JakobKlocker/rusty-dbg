@@ -189,6 +189,7 @@ impl<'a> CommandHandler<'a> {
         }
     }
     
+    #[allow(dead_code)]
     fn print_file_and_line(&self){
         let regs = getregs(self.debugger.process.pid).unwrap();
 

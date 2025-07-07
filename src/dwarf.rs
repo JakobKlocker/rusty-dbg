@@ -1,10 +1,11 @@
-use gimli::{Dwarf, EndianSlice, RunTimeEndian};
+use gimli::RunTimeEndian;
 use memmap2::Mmap;
 use object::{Object, ObjectSection};
-use std::{borrow, env, error, fs, path};
+use std::{borrow, error, fs};
 use std::path::PathBuf;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DwarfContext {
     pub mmap: Mmap,
     pub endian: RunTimeEndian,
