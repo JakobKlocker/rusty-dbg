@@ -115,7 +115,6 @@ impl Debugger {
             let next_addr = rip + next_inst.len() as u64;
             println!("next addr: {}", next_addr);
             self.breakpoint.set_breakpoint(next_addr, self.process.pid);
-            self.cont();
         } else {
             ptrace::step(self.process.pid, None).expect("Single-step failed");
         }
@@ -219,6 +218,7 @@ impl Debugger {
     fn handle_sigtrap(&mut self){ // remove BP and replace with org. once hit
         let mut regs = getregs(self.process.pid).unwrap();
         let cur_addr = regs.rip - 1;
+        println!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
         if self.breakpoint.is_breakpoint(cur_addr){
             self.breakpoint.remove_breakpoint(cur_addr, self.process.pid);
             regs.rip -= 1;
