@@ -17,7 +17,7 @@ impl FunctionInfo {
             Object::Elf(elf) => {
                 for sym in elf.syms.iter() {
                     if sym.is_function() {
-                        if let Some(Ok(name)) = elf.strtab.get(sym.st_name){
+                        if let Some(Ok(name)) = elf.strtab.get(sym.st_name){ // replace with get_at
                             println!("{} {}", name, sym.st_value);
                             ret.push(FunctionInfo {
                                 name: name.to_string(),
