@@ -23,13 +23,13 @@ impl Process {
             base_addr: 0,
         }
     }
-
+    #[allow(dead_code)]
     pub fn print_map_infos(&self) {
         for map in &self.maps {
             println!("{}", map);
         }
     }
-
+    #[allow(dead_code)]
     pub fn get_random_rw_memory(&self) -> Result<u64, String> {
         for map in &self.maps {
             if map.read && map.write {
