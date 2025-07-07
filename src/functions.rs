@@ -10,7 +10,7 @@ pub struct FunctionInfo {
 }
 
 impl FunctionInfo {
-    pub fn new(path: String, debuger_name: String) -> Vec<FunctionInfo> {
+    pub fn new(path: &String, debuger_name: String) -> Vec<FunctionInfo> {
         println!("debuger_name: {}", debuger_name); // Debg. name probably not needed anymore like this
         let buffer = fs::read(path).unwrap();
         let mut ret = Vec::new();

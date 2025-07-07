@@ -1,10 +1,11 @@
 mod breakpoint;
-mod functions;
-mod map;
-mod process;
 mod command;
 mod core;
+mod dwarf;
+mod functions;
+mod map;
 mod memory;
+mod process;
 
 use std::env;
 
@@ -23,7 +24,6 @@ fn main() {
         debuger_process_name.to_string(),
     );
 
-    dbg.print_functions();
     dbg.process.get_base_addr_from_map();
     dbg.run();
 }
