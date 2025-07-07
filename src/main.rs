@@ -1,5 +1,4 @@
 mod breakpoint;
-mod debugger;
 mod functions;
 mod map;
 mod process;
@@ -19,7 +18,7 @@ fn main() {
     let debuger_process_name: &_ = &args[0].rsplit('/').next().unwrap_or("unknown");
     let debugee_pid_path: &_ = &args[1];
 
-    let mut dbg = debugger::Debugger::new(
+    let mut dbg = core::Debugger::new(
         debugee_pid_path.to_string(),
         debuger_process_name.to_string(),
     );

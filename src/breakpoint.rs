@@ -72,57 +72,6 @@ impl Breakpoint {
         }
     }
 
-    //    pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) {
-    //        println!("add: {:#x}  pid: {}", addr, pid);
-    //
-    //        let original_byte = ptrace::read(pid, addr as *mut libc::c_void).unwrap();
-    //
-    //        println!("Original byte: {:x}", original_byte);
-    //
-    //        let mut replace_byte = original_byte;
-    //
-    //        replace_byte = (replace_byte & !0xFF) | 0xCC;
-    //        println!("replaced bytes: {:x}", replace_byte);
-    //
-    //        ptrace::write(pid, addr as *mut libc::c_void, replace_byte).unwrap();
-    //
-    //        match ptrace::read(pid, addr as *mut libc::c_void) {
-    //            Ok(breakpoint_check) => {
-    //                if (breakpoint_check & 0xFF) != 0xCC {
-    //                    println!(
-    //                        "Breakpoint was not written correctly: 0x{:x}",
-    //                        breakpoint_check
-    //                    );
-    //                } else {
-    //                    println!("Breakpoint is correctly set.");
-    //                    self.breakpoint.push((addr, original_byte as u8));
-    //                }
-    //            }
-    //            Err(err) => {
-    //                eprintln!("Error: {}", err);
-    //            }
-    //        }
-    //    }
-    //
-    //    pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {
-    //        if let Some((pos)) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
-    //            let (saved_addr, saved_byte) = self.breakpoint[pos];
-    //            let orig_mem = ptrace::read(pid, addr as *mut libc::c_void).unwrap();
-    //
-    //            let restored = (orig_mem & !0xFF) | (saved_byte as i64);
-    //
-    //            ptrace::write(pid, saved_addr as *mut libc::c_void, restored).unwrap();
-    //            println!(
-    //                "Breakpoint removed and original byte restored at: {:#x}",
-    //                saved_addr
-    //            );
-    //            self.breakpoint.remove(pos);
-    //            return true;
-    //        }
-    //        println!("Breakpoing doesn't exist");
-    //        return false;
-    //    }
-
     pub fn is_breakpoint(&self, addr: u64) -> bool {
         self.breakpoint.iter().any(|(a, _)| *a == addr)
     }
@@ -136,7 +85,7 @@ impl Breakpoint {
 
 #[cfg(test)]
 mod tests {
-    use crate::debugger::Debugger;
+    use crate::core::Debugger;
     use nix::libc;
     use nix::sys::ptrace;
 

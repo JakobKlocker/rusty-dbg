@@ -1,7 +1,8 @@
 use goblin::Object;
-use std::{borrow, env, error, fs, io::Read};
+use std::fs;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct FunctionInfo {
     pub name: String,
     pub offset: u64, //offset of base
@@ -17,7 +18,8 @@ impl FunctionInfo {
             Object::Elf(elf) => {
                 for sym in elf.syms.iter() {
                     if sym.is_function() {
-                        if let Some(Ok(name)) = elf.strtab.get(sym.st_name){ // replace with get_at
+                        if let Some(name) = elf.strtab.get_at(sym.st_name) {
+                            // replace with get_at
                             println!("{} {}", name, sym.st_value);
                             ret.push(FunctionInfo {
                                 name: name.to_string(),

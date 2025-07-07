@@ -4,23 +4,21 @@ use nix::sys::ptrace::{self, getregs};
 use std::io;
 
 use crate::memory::read_process_memory;
-struct CommandHandler<'a> {
-    debugger: &'a mut Debugger,
+pub struct CommandHandler<'a> {
+    pub debugger: &'a mut Debugger,
 }
 
-
 impl<'a> CommandHandler<'a> {
-    fn get_command(&self) -> String {
-        println!("Enter Command: ");
+    pub fn get_command(&self) -> String {
+        println!("Enter Command:");
 
         let mut command = String::new();
         io::stdin().read_line(&mut command).unwrap();
         let command = command.trim();
-        println!("{}", command);
         return command.to_string();
     }
 
-    fn handle_command(&mut self, command: &str) {
+    pub fn handle_command(&mut self, command: &str) {
         let mut parts = command.split_whitespace();
         let command_word = parts.next();
 
@@ -35,12 +33,16 @@ impl<'a> CommandHandler<'a> {
                     match u64::from_str_radix(arg, 16) {
                         Ok(breakpoint_addr) => {
                             println!("{:#x}", breakpoint_addr);
-                            self.debugger.breakpoint
+                            self.debugger
+                                .breakpoint
                                 .set_breakpoint(breakpoint_addr, self.debugger.process.pid);
                         }
                         Err(_) => {
-                            if let Some(function) =
-                                self.debugger.functions.iter().find(|function| function.name == arg)
+                            if let Some(function) = self
+                                .debugger
+                                .functions
+                                .iter()
+                                .find(|function| function.name == arg)
                             {
                                 println!(
                                     "Found function, setting bp on {}, addr: {:#x}",
@@ -72,7 +74,8 @@ impl<'a> CommandHandler<'a> {
                     match u64::from_str_radix(arg, 16) {
                         Ok(breakpoint_addr) => {
                             println!("remove {}", breakpoint_addr);
-                            self.debugger.breakpoint
+                            self.debugger
+                                .breakpoint
                                 .remove_breakpoint(breakpoint_addr, self.debugger.process.pid);
                         }
                         Err(e) => {
@@ -83,7 +86,9 @@ impl<'a> CommandHandler<'a> {
                     println!("No seconda argument provided for rm breakpoint");
                 }
             }
-            Some("step") => ptrace::step(self.debugger.process.pid, None).expect("Single-step failed"),
+            Some("step") => {
+                ptrace::step(self.debugger.process.pid, None).expect("Single-step failed")
+            }
             Some("over") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
@@ -120,7 +125,9 @@ impl<'a> CommandHandler<'a> {
         if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
             println!("next addr: {}", next_addr);
-            self.debugger.breakpoint.set_breakpoint(next_addr, self.debugger.process.pid);
+            self.debugger
+                .breakpoint
+                .set_breakpoint(next_addr, self.debugger.process.pid);
             self.cont();
         } else {
             ptrace::step(self.debugger.process.pid, None).expect("Single-step failed");
@@ -159,9 +166,7 @@ impl<'a> CommandHandler<'a> {
         }
     }
 
-
-
-    fn cont(& mut self) {
+    fn cont(&mut self) {
         println!("Continuing execution...");
         ptrace::cont(self.debugger.process.pid, None).expect("Cont fucntion failed");
         self.debugger.state = DebuggerState::AwaitingTrap;
@@ -171,14 +176,11 @@ impl<'a> CommandHandler<'a> {
         println!("Exiting the debugger...");
         std::process::exit(0);
     }
-    
+
     fn print_registers(&self) {
-    match getregs(self.debugger.process.pid) {
-        Ok(regs) => println!("Registers: {:?}", regs),
-        Err(err) => println!("Failed to get registers: {}", err),
+        match getregs(self.debugger.process.pid) {
+            Ok(regs) => println!("Registers: {:?}", regs),
+            Err(err) => println!("Failed to get registers: {}", err),
+        }
     }
-}
-
-
-
 }
