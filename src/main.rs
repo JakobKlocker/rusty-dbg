@@ -6,8 +6,10 @@ mod functions;
 mod map;
 mod memory;
 mod process;
+mod stack_unwind;
 
 use std::env;
+use crate::stack_unwind::load_eh_frame;
 
 fn main() {
     env_logger::init();
@@ -17,6 +19,8 @@ fn main() {
         println!("Usage: {} <pid|path>", args[0]);
         return;
     }
+    
+    load_eh_frame(&args[1]);
 
     let debuger_process_name: &_ = &args[0].rsplit('/').next().unwrap_or("unknown");
     let debugee_pid_path: &_ = &args[1];
