@@ -3,6 +3,7 @@ use nix::sys::ptrace;
 use nix::unistd::Pid;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
+use log::{debug, info};
 
 #[derive(Debug)]
 pub struct Process {
@@ -15,7 +16,7 @@ impl Process {
     pub fn attach(pid: i32) -> Self {
         let pid = Pid::from_raw(pid);
         ptrace::attach(pid).expect("Failed to attach to process");
-        println!("Successfully attached to PID: {}", pid);
+        info!("Successfully attached to PID: {}", pid);
         let maps = Map::new(pid).expect("Failed to get maps");
         Process {
             pid,
@@ -57,7 +58,7 @@ impl Process {
                 .iter()
                 .find(|map| map.file_path.contains(&programm_name))
                 .map(|map| {
-                    println!("Base is probably: {:x}", map.addr_start);
+                    debug!("Base is probably: {:x}", map.addr_start);
                     self.base_addr = map.addr_start;
                     map.addr_start
                 }),

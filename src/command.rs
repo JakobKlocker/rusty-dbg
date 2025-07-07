@@ -2,6 +2,7 @@ use crate::core::{Debugger, DebuggerState};
 use capstone::prelude::*;
 use nix::sys::ptrace::{self, getregs};
 use std::io;
+use log::{debug};
 
 use crate::memory::read_process_memory;
 pub struct CommandHandler<'a> {
@@ -44,7 +45,7 @@ impl<'a> CommandHandler<'a> {
                                 .iter()
                                 .find(|function| function.name == arg)
                             {
-                                println!(
+                                debug!(
                                     "Found function, setting bp on {}, addr: {:#x}",
                                     arg, function.offset
                                 );
@@ -125,7 +126,6 @@ impl<'a> CommandHandler<'a> {
         let next_inst = insns.iter().next().unwrap();
         if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
-            println!("next addr: {}", next_addr);
             self.debugger
                 .breakpoint
                 .set_breakpoint(next_addr, self.debugger.process.pid);
@@ -156,7 +156,7 @@ impl<'a> CommandHandler<'a> {
             return;
         }
         
-        println!("{:?}", code);
+        debug!("{:?}", code);
 
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
 

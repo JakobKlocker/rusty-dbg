@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io::{BufRead, BufReader};
 use std::fs;
 use std::fmt;
+use log::{debug};
 
 #[derive(Debug)]
 pub struct Map {
@@ -31,7 +32,7 @@ impl Map{
         //maps line example: 622b53609000-622b5360d000 r--p 00000000 103:05 4327957                   /usr/bin/ls
         pub fn parse_maps_info(map: String) -> Result<Self, Box<dyn Error>> {
             let parts: Vec<&str> = map.split_whitespace().collect();
-            println!("{:?}", parts);
+            debug!("{:?}", parts);
             if parts.len() < 5 { // should check for 6, sometimes it's below 5 thought. RECHECK THIS
                 return Err("Failed parsing maps, len below 5".into());
             }

@@ -7,6 +7,7 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
+use log::{debug, info};
 
 use crate::command::CommandHandler;
 
@@ -50,7 +51,7 @@ impl Debugger {
                     handler.handle_command(input.as_str());
                 }
             }
-            println!("state: {:?}", self.state);
+            info!("state: {:?}", self.state);
         }
     }
 
@@ -58,7 +59,7 @@ impl Debugger {
         // remove BP and replace with org. once hit
         let mut regs = getregs(self.process.pid).unwrap();
         let cur_addr = regs.rip - 1;
-        println!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
+        info!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
         if self.breakpoint.is_breakpoint(cur_addr) {
             self.breakpoint
                 .remove_breakpoint(cur_addr, self.process.pid);
@@ -100,17 +101,17 @@ impl Debugger {
 
     #[allow(dead_code)]
     pub fn print_functions(&self) {
-        println!("{:?}", self.functions);
+        debug!("{:?}", self.functions);
     }
 }
 
 fn get_pid_from_input(input: String) -> i32 {
     if Path::new(&format!("/proc/{}", input)).is_dir() {
-        println!("{} is a pid", input);
+        info!("{} is a pid", input);
         input.parse().expect("Failed to parse PID")
     } else if Path::new(&input).is_file() {
-        println!("{} is a file", input);
-        println!("Executing {}", input);
+        info!("{} is a file", input);
+        info!("Executing {}", input);
         let child = Command::new(input).spawn().unwrap();
         child.id() as i32
     } else {
