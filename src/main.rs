@@ -1,12 +1,15 @@
 mod breakpoint;
-mod functions;
-mod map;
-mod process;
 mod command;
 mod core;
+mod dwarf;
+mod functions;
+mod map;
 mod memory;
+mod process;
 
-use std::env;
+use crate::dwarf::*;
+use object::{Object, ObjectSection};
+use std::{borrow, env, error, fs, path};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -23,7 +26,7 @@ fn main() {
         debuger_process_name.to_string(),
     );
 
-    dbg.print_functions();
     dbg.process.get_base_addr_from_map();
+    //dwarf testing
     dbg.run();
 }

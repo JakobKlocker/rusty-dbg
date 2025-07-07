@@ -111,6 +111,7 @@ impl<'a> CommandHandler<'a> {
 
         let regs = getregs(self.debugger.process.pid).unwrap();
 
+
         let rip = regs.rip;
 
         let num_bytes = 10;
@@ -166,6 +167,7 @@ impl<'a> CommandHandler<'a> {
                 i.mnemonic().unwrap_or(""),
                 i.op_str().unwrap_or("")
             );
+            self.debugger.dwarf.get_line_and_file(i.address() - self.debugger.process.base_addr);
         }
     }
 
@@ -185,5 +187,14 @@ impl<'a> CommandHandler<'a> {
             Ok(regs) => println!("Registers: {:?}", regs),
             Err(err) => println!("Failed to get registers: {}", err),
         }
+    }
+    
+    fn print_file_and_line(&self){
+        let regs = getregs(self.debugger.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        self.debugger.dwarf.get_line_and_file(rip - self.debugger.process.base_addr);
+       
     }
 }

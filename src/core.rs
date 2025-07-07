@@ -1,6 +1,7 @@
 use crate::breakpoint::*;
 use crate::functions::*;
 use crate::process::*;
+use crate::dwarf::*;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
@@ -21,6 +22,8 @@ pub struct Debugger {
     pub breakpoint: Breakpoint,
     pub functions: Vec<FunctionInfo>,
     pub state: DebuggerState,
+    pub dwarf: DwarfContext,
+
 }
 
 impl Debugger {
@@ -30,8 +33,9 @@ impl Debugger {
         Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
-            functions: FunctionInfo::new(debugee_pid_path, debuger_name),
+            functions: FunctionInfo::new(&debugee_pid_path, debuger_name),
             state: DebuggerState::Interactive,
+            dwarf: DwarfContext::new(&debugee_pid_path).unwrap()
         }
     }
 
