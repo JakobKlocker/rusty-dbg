@@ -1,7 +1,8 @@
-use std::{fs, borrow};
-use gimli::{BaseAddresses, EhFrame, EndianSlice, UnwindSection, RunTimeEndian};
-use object::{Object, ObjectSection};
+use gimli::UnwindContext;
+use gimli::{BaseAddresses, EhFrame, EndianSlice, RunTimeEndian, UnwindSection};
 use memmap2::Mmap;
+use object::{Object, ObjectSection};
+use std::{borrow, fs};
 
 pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Open the binary and memory-map it
@@ -23,20 +24,54 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
         .uncompressed_data()?;
 
     // Wrap the section data in an EndianSlice
+    let eh_frame_section = object
+        .section_by_name(".eh_frame")
+        .ok_or("No .eh_frame section found")?;
+
+    let eh_frame_data = eh_frame_section.uncompressed_data()?;
+    let eh_frame_address = eh_frame_section.address(); 
+    let bases = BaseAddresses::default().set_eh_frame(eh_frame_address);
     let eh_frame = EhFrame::new(&eh_frame_data, endian);
-
-    // You need the base addresses for relocations
-    let bases = BaseAddresses::default();
-
     // Parse the entries in .eh_frame
     let mut entries = eh_frame.entries(&bases);
 
     while let Some(entry) = entries.next()? {
         match entry {
             gimli::CieOrFde::Cie(cie) => {
-                println!("CIE: {:?}", cie);
+                //println!("CIE: {:?}", cie);
             }
             gimli::CieOrFde::Fde(partial) => {
+                // Fully parse the FDE using the partial entry
+                let fde = partial
+                    .parse(|section, bases, offset| eh_frame.cie_from_offset(bases, offset))
+                    .unwrap();
+
+                // Get the start and end PC range this FDE covers
+                let start = fde.initial_address();
+                let end = start + fde.len();
+
+                println!("FDE for address range: 0x{:x} - 0x{:x}", start, end);
+
+                // Check if the address falls within this FDE's range
+                let target_addr = 0x1129; // <- Replace this with your address of interest
+                if target_addr >= start && target_addr < end {
+                    println!("Target address 0x{:x} is within this FDE", target_addr);
+
+                    // Get unwind info (instructions) for this address
+                    let mut ctx = UnwindContext::new();
+                    let unwind_table =
+                        fde.unwind_info_for_address(&eh_frame, &bases, &mut ctx, target_addr)?;
+
+                    let row =
+                        fde.unwind_info_for_address(&eh_frame, &bases, &mut ctx, target_addr)?;
+
+                    println!("Unwind info for 0x{:x}:", target_addr);
+                    println!("CFA: {:?}", row.cfa());
+
+                    for (reg, rule) in row.registers() {
+                        println!("Register {:?} ", rule);
+                    }
+                }
             }
         }
     }
