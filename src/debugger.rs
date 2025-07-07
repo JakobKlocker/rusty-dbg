@@ -13,10 +13,17 @@ use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug)]
+enum DebuggerState {
+    Interactive,
+    AwaitingTrap,
+}
+
+#[derive(Debug)]
 pub struct Debugger {
     pub process: Process,
     pub breakpoint: Breakpoint,
     pub functions: Vec<FunctionInfo>,
+    state: DebuggerState,
 }
 
 impl Debugger {
@@ -27,17 +34,7 @@ impl Debugger {
             process: Process::attach(pid),
             breakpoint: Breakpoint::new(),
             functions: FunctionInfo::new(debugee_pid_path, debuger_name),
-        }
-    }
-
-    fn interactive_loop(&mut self) {
-        loop {
-            let command = self.get_command();
-            if command == "continue" || command == "cont" {
-                self.cont();
-                break;
-            }
-            self.handle_command(&command);
+            state: DebuggerState::Interactive,
         }
     }
 
@@ -115,6 +112,7 @@ impl Debugger {
             let next_addr = rip + next_inst.len() as u64;
             println!("next addr: {}", next_addr);
             self.breakpoint.set_breakpoint(next_addr, self.process.pid);
+            self.cont();
         } else {
             ptrace::step(self.process.pid, None).expect("Single-step failed");
         }
@@ -205,58 +203,71 @@ impl Debugger {
         }
     }
 
-    fn cont(&self) {
+    fn cont(& mut self) {
         println!("Continuing execution...");
         ptrace::cont(self.process.pid, None).expect("Cont fucntion failed");
+        self.state = DebuggerState::AwaitingTrap;
     }
 
     fn exit(&self) {
         println!("Exiting the debugger...");
         std::process::exit(0);
     }
-    
-    fn handle_sigtrap(&mut self){ // remove BP and replace with org. once hit
+
+    fn handle_sigtrap(&mut self) {
+        // remove BP and replace with org. once hit
         let mut regs = getregs(self.process.pid).unwrap();
         let cur_addr = regs.rip - 1;
         println!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
-        if self.breakpoint.is_breakpoint(cur_addr){
-            self.breakpoint.remove_breakpoint(cur_addr, self.process.pid);
+        if self.breakpoint.is_breakpoint(cur_addr) {
+            self.breakpoint
+                .remove_breakpoint(cur_addr, self.process.pid);
             regs.rip -= 1;
             setregs(self.process.pid, regs);
             ptrace::step(self.process.pid, None).expect("Single-step after breakpoint failed");
         }
+        self.state = DebuggerState::Interactive;
     }
 
     pub fn run(&mut self) {
         loop {
-            let status = waitpid(self.process.pid, None);
-            match status {
-                Ok(WaitStatus::Exited(_, exit_status)) => {
-                    println!("Process exited with status: {}", exit_status);
-                    break;
-                }
-                Ok(WaitStatus::Stopped(_, signal)) => {
-                    let regs = getregs(self.process.pid).unwrap();
-                    println!("Process stopped by signal: {:?} at addr: 0x{:x}", signal, regs.rip - 1);
-                    if signal == nix::sys::signal::Signal::SIGTRAP {
-                        self.handle_sigtrap();
-                    }
-                    self.interactive_loop();
-               }
-                Ok(WaitStatus::Signaled(_, signal, _)) => {
-                    println!("Process terminated by signal: {:?}", signal);
-                    break;
-                }
-                Ok(_) => {
-                    println!("Process changed state.");
-                }
-                Err(e) => {
-                    println!("Error waiting for process: {}", e);
-                    break;
+            match (self.state) {
+                DebuggerState::AwaitingTrap => self.resume_and_wait(),
+                DebuggerState::Interactive => {
+                    let command = self.get_command();
+                    self.handle_command(command.as_str());
                 }
             }
         }
-        println!("Debugger run complete.");
+    }
+
+    fn resume_and_wait(&mut self) {
+        let status = waitpid(self.process.pid, None);
+        match status {
+            Ok(WaitStatus::Exited(_, exit_status)) => {
+                println!("Process exited with status: {}", exit_status);
+            }
+            Ok(WaitStatus::Stopped(_, signal)) => {
+                let regs = getregs(self.process.pid).unwrap();
+                println!(
+                    "Process stopped by signal: {:?} at addr: 0x{:x}",
+                    signal,
+                    regs.rip - 1
+                );
+                if signal == nix::sys::signal::Signal::SIGTRAP {
+                    self.handle_sigtrap();
+                }
+            }
+            Ok(WaitStatus::Signaled(_, signal, _)) => {
+                println!("Process terminated by signal: {:?}", signal);
+            }
+            Ok(_) => {
+                println!("Process changed state.");
+            }
+            Err(e) => {
+                println!("Error waiting for process: {}", e);
+            }
+        }
     }
 
     fn print_registers(&self) {
