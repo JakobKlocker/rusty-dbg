@@ -1,13 +1,13 @@
 use crate::breakpoint::*;
+use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
-use crate::dwarf::*;
+use log::{debug, info};
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use log::{debug, info};
 
 use crate::command::CommandHandler;
 
@@ -24,7 +24,7 @@ pub struct Debugger {
     pub functions: Vec<FunctionInfo>,
     pub state: DebuggerState,
     pub dwarf: DwarfContext,
-
+    pub path: String,
 }
 
 impl Debugger {
@@ -36,7 +36,8 @@ impl Debugger {
             breakpoint: Breakpoint::new(),
             functions: FunctionInfo::new(&debugee_pid_path, debuger_name),
             state: DebuggerState::Interactive,
-            dwarf: DwarfContext::new(&debugee_pid_path).unwrap()
+            dwarf: DwarfContext::new(&debugee_pid_path).unwrap(),
+            path: debugee_pid_path,
         }
     }
 
@@ -99,9 +100,15 @@ impl Debugger {
         }
     }
 
-    #[allow(dead_code)]
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
+    }
+
+    pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
+        self.functions
+            .iter()
+            .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
+            .map(|f| f.name.clone())
     }
 }
 

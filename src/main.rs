@@ -6,6 +6,7 @@ mod functions;
 mod map;
 mod memory;
 mod process;
+mod stack_unwind;
 
 use std::env;
 
@@ -18,6 +19,8 @@ fn main() {
         return;
     }
 
+    //let info = get_unwind_info(&args[1], 0x1030).unwrap();
+
     let debuger_process_name: &_ = &args[0].rsplit('/').next().unwrap_or("unknown");
     let debugee_pid_path: &_ = &args[1];
 
@@ -25,6 +28,7 @@ fn main() {
         debugee_pid_path.to_string(),
         debuger_process_name.to_string(),
     );
+    dbg.print_functions();
 
     dbg.process.get_base_addr_from_map();
     dbg.run();

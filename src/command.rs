@@ -1,10 +1,11 @@
 use crate::core::{Debugger, DebuggerState};
 use capstone::prelude::*;
+use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use std::io;
-use log::{debug};
 
 use crate::memory::read_process_memory;
+use crate::stack_unwind::*;
 pub struct CommandHandler<'a> {
     pub debugger: &'a mut Debugger,
 }
@@ -96,8 +97,80 @@ impl<'a> CommandHandler<'a> {
             Some("show-bp") => self.debugger.breakpoint.show_breakpoints(),
             Some("cont") => self.cont(),
             Some("regs") => self.print_registers(),
+            Some("offset") => self.print_offset(),
+            Some("bt") => {
+                if let Err(e) = self.backtrace() {
+                    println!("");
+                    println!("End of backtrace: {}", e);
+                }
+            }
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
+        }
+    }
+
+    fn print_offset(&self) {
+        let regs = getregs(self.debugger.process.pid).unwrap();
+        let func_offset = regs.rip - self.debugger.process.base_addr;
+        println!("{}", func_offset);
+    }
+
+    fn backtrace(&self) -> anyhow::Result<()> {
+        let regs = getregs(self.debugger.process.pid)?;
+        let mut rip = regs.rip;
+        let mut rsp = regs.rsp;
+        let mut rbp = regs.rbp;
+        let mut first = true;
+
+        loop {
+            let mut func_offset = rip - self.debugger.process.base_addr;
+
+            let info = get_unwind_info(&self.debugger.path, func_offset)?;
+            debug!("{:?}", info);
+
+            let cfa_base = match info.cfa_register {
+                6 => rbp,
+                7 => rsp,
+                16 => rip,
+                other => panic!("unsupported cfa reg{}", other),
+            };
+
+            let cfa = (cfa_base as i64 + info.cfa_offset) as u64;
+            debug!("CFA: 0x{:016x}", cfa);
+
+            let ret_addr_addr = (cfa as i64 + info.ra_offset) as u64;
+
+            let ret_addr = ptrace::read(
+                self.debugger.process.pid,
+                ret_addr_addr as ptrace::AddressType,
+            )
+            .unwrap() as u64;
+
+            debug!(
+                "Return address (caller RIP): 0x{:016x}",
+                ret_addr - self.debugger.process.base_addr
+            );
+
+            func_offset = ret_addr - self.debugger.process.base_addr;
+            let name: String = self
+                .debugger
+                .get_function_name(func_offset)
+                .unwrap_or_else(|| "_start".to_string());
+            if first != true {
+                print!("-> ");
+            }
+            print!("{}", name);
+            rip = ret_addr;
+            rsp = cfa;
+            if info.cfa_register == 6 {
+                let saved_rbp_addr = (cfa as i64 - 16) as u64;
+                rbp = ptrace::read(
+                    self.debugger.process.pid,
+                    saved_rbp_addr as ptrace::AddressType,
+                )
+                .unwrap() as u64;
+            }
+            first = false;
         }
     }
 
@@ -111,7 +184,6 @@ impl<'a> CommandHandler<'a> {
             .expect("Failed to create Capstone object");
 
         let regs = getregs(self.debugger.process.pid).unwrap();
-
 
         let rip = regs.rip;
 
@@ -155,7 +227,7 @@ impl<'a> CommandHandler<'a> {
             println!("Failed to read memory at 0x{:x}", rip);
             return;
         }
-        
+
         debug!("{:?}", code);
 
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
@@ -167,7 +239,9 @@ impl<'a> CommandHandler<'a> {
                 i.mnemonic().unwrap_or(""),
                 i.op_str().unwrap_or("")
             );
-            self.debugger.dwarf.get_line_and_file(i.address() - self.debugger.process.base_addr);
+            self.debugger
+                .dwarf
+                .get_line_and_file(i.address() - self.debugger.process.base_addr);
         }
     }
 
@@ -188,14 +262,15 @@ impl<'a> CommandHandler<'a> {
             Err(err) => println!("Failed to get registers: {}", err),
         }
     }
-    
+
     #[allow(dead_code)]
-    fn print_file_and_line(&self){
+    fn print_file_and_line(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
 
         let rip = regs.rip;
 
-        self.debugger.dwarf.get_line_and_file(rip - self.debugger.process.base_addr);
-       
+        self.debugger
+            .dwarf
+            .get_line_and_file(rip - self.debugger.process.base_addr);
     }
 }

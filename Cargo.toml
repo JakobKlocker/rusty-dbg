@@ -1,4 +1,3 @@
-workspace = { members = ["test_programm"] }
 [package]
 name = "rusty-dbg"
 version = "0.1.0"
@@ -19,3 +18,4 @@ goblin = "0.10.0"
 capstone = "0.13.0"
 log = "0.4.27"
 env_logger = "0.11.8"
+anyhow = "1.0.98"
