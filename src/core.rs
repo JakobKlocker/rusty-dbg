@@ -24,7 +24,7 @@ pub struct Debugger {
     pub functions: Vec<FunctionInfo>,
     pub state: DebuggerState,
     pub dwarf: DwarfContext,
-
+    pub path: String,
 }
 
 impl Debugger {
@@ -36,7 +36,8 @@ impl Debugger {
             breakpoint: Breakpoint::new(),
             functions: FunctionInfo::new(&debugee_pid_path, debuger_name),
             state: DebuggerState::Interactive,
-            dwarf: DwarfContext::new(&debugee_pid_path).unwrap()
+            dwarf: DwarfContext::new(&debugee_pid_path).unwrap(),
+            path: debugee_pid_path,
         }
     }
 

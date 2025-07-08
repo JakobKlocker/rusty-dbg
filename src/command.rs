@@ -4,7 +4,9 @@ use nix::sys::ptrace::{self, getregs};
 use std::io;
 use log::{debug};
 
+
 use crate::memory::read_process_memory;
+use crate::stack_unwind::*;
 pub struct CommandHandler<'a> {
     pub debugger: &'a mut Debugger,
 }
@@ -103,14 +105,17 @@ impl<'a> CommandHandler<'a> {
         }
     }
     
-    fn backtrace(&self){
-        let regs = getregs(self.debugger.process.pid).unwrap();
-
-    }
-    
     fn print_offset(&self){
         let regs = getregs(self.debugger.process.pid).unwrap();
-        println!("{}", regs.rip - self.debugger.process.base_addr);
+        let func_offset = regs.rip - self.debugger.process.base_addr;
+        println!("{}", func_offset);
+    }
+    
+    fn backtrace(&self){
+        let regs = getregs(self.debugger.process.pid).unwrap();
+        let func_offset = regs.rip - self.debugger.process.base_addr;
+        let info = get_unwind_info(&self.debugger.path,func_offset).unwrap();
+        println!("{:?}", info);
     }
 
     fn step_over(&mut self) {

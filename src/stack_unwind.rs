@@ -1,10 +1,20 @@
-use gimli::UnwindContext;
 use gimli::{BaseAddresses, EhFrame, EndianSlice, RunTimeEndian, UnwindSection};
+use gimli::{CfaRule, UnwindContext};
 use memmap2::Mmap;
 use object::{Object, ObjectSection};
 use std::{borrow, fs};
 
-pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+#[derive(Debug)]
+pub struct UnwindRowInfo {
+    pub cfa_register: u16,
+    pub cfa_offset: i64,
+    pub ra_offset: i64,
+}
+
+pub fn get_unwind_info(
+    path: &str,
+    target_addr: u64,
+) -> Result<UnwindRowInfo, Box<dyn std::error::Error>> {
     // Open the binary and memory-map it
     let file = fs::File::open(path)?;
     let mmap = unsafe { Mmap::map(&file)? };
@@ -29,7 +39,7 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("No .eh_frame section found")?;
 
     let eh_frame_data = eh_frame_section.uncompressed_data()?;
-    let eh_frame_address = eh_frame_section.address(); 
+    let eh_frame_address = eh_frame_section.address();
     let bases = BaseAddresses::default().set_eh_frame(eh_frame_address);
     let eh_frame = EhFrame::new(&eh_frame_data, endian);
     // Parse the entries in .eh_frame
@@ -50,8 +60,7 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
                 let end = start + fde.len();
 
                 println!("FDE for address range: 0x{:x} - 0x{:x}", start, end);
-               
-                let target_addr = 0x1129; 
+
                 if target_addr >= start && target_addr < end {
                     println!("Target address 0x{:x} is within this FDE", target_addr);
 
@@ -65,12 +74,32 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
                     println!("CFA: {:?}", row.cfa());
 
                     for (reg, rule) in row.registers() {
-                        println!("Register {:?} ", rule);
+                        println!("Register {:?} = {:?}", reg, rule);
                     }
+
+                    let (cfa_register, cfa_offset) = match row.cfa() {
+                        gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                            (register.0, *offset)
+                        }
+                        rule => return Err(format!("Unsupported CFA rule: {:?}", rule).into()),
+                    };
+
+                    let ra_offset = match row.register(gimli::X86_64::RA) {
+                        gimli::RegisterRule::Offset(off) => off,
+                        rule => return Err(format!("Unsupported RA rule: {:?}", rule).into()),
+                    };
+
+                    let info = UnwindRowInfo {
+                        cfa_register,
+                        cfa_offset,
+                        ra_offset,
+                    };
+
+                    return Ok(info);
                 }
             }
         }
     }
 
-    Ok(())
+    return Err(format!("No FDE found for address 0x{:x}", target_addr).into());
 }
