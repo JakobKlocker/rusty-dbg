@@ -99,7 +99,6 @@ impl Debugger {
         }
     }
 
-    #[allow(dead_code)]
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
     }

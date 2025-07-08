@@ -41,7 +41,6 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
                 //println!("CIE: {:?}", cie);
             }
             gimli::CieOrFde::Fde(partial) => {
-                // Fully parse the FDE using the partial entry
                 let fde = partial
                     .parse(|section, bases, offset| eh_frame.cie_from_offset(bases, offset))
                     .unwrap();
@@ -51,16 +50,13 @@ pub fn load_eh_frame(path: &str) -> Result<(), Box<dyn std::error::Error>> {
                 let end = start + fde.len();
 
                 println!("FDE for address range: 0x{:x} - 0x{:x}", start, end);
-
-                // Check if the address falls within this FDE's range
-                let target_addr = 0x1129; // <- Replace this with your address of interest
+               
+                let target_addr = 0x1129; 
                 if target_addr >= start && target_addr < end {
                     println!("Target address 0x{:x} is within this FDE", target_addr);
 
                     // Get unwind info (instructions) for this address
                     let mut ctx = UnwindContext::new();
-                    let unwind_table =
-                        fde.unwind_info_for_address(&eh_frame, &bases, &mut ctx, target_addr)?;
 
                     let row =
                         fde.unwind_info_for_address(&eh_frame, &bases, &mut ctx, target_addr)?;

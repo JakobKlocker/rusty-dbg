@@ -29,6 +29,7 @@ fn main() {
         debugee_pid_path.to_string(),
         debuger_process_name.to_string(),
     );
+    dbg.print_functions();
 
     dbg.process.get_base_addr_from_map();
     dbg.run();

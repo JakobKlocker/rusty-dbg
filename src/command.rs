@@ -96,9 +96,21 @@ impl<'a> CommandHandler<'a> {
             Some("show-bp") => self.debugger.breakpoint.show_breakpoints(),
             Some("cont") => self.cont(),
             Some("regs") => self.print_registers(),
+            Some("offset") => self.print_offset(),
+            Some("bt") => self.backtrace(),
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
+    }
+    
+    fn backtrace(&self){
+        let regs = getregs(self.debugger.process.pid).unwrap();
+
+    }
+    
+    fn print_offset(&self){
+        let regs = getregs(self.debugger.process.pid).unwrap();
+        println!("{}", regs.rip - self.debugger.process.base_addr);
     }
 
     fn step_over(&mut self) {
