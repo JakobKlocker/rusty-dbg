@@ -1,9 +1,8 @@
 use crate::core::{Debugger, DebuggerState};
 use capstone::prelude::*;
+use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use std::io;
-use log::{debug};
-
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -104,18 +103,39 @@ impl<'a> CommandHandler<'a> {
             _ => println!("command not found {}", command),
         }
     }
-    
-    fn print_offset(&self){
+
+    fn print_offset(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
         let func_offset = regs.rip - self.debugger.process.base_addr;
         println!("{}", func_offset);
     }
-    
-    fn backtrace(&self){
+
+    fn backtrace(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
         let func_offset = regs.rip - self.debugger.process.base_addr;
-        let info = get_unwind_info(&self.debugger.path,func_offset).unwrap();
+        let info = get_unwind_info(&self.debugger.path, func_offset).unwrap();
         println!("{:?}", info);
+
+        let cfa_base = match info.cfa_register {
+            6 => regs.rbp,
+            7 => regs.rsp,
+            16 => regs.rip,
+            other => panic!("unsupported cfa reg{}", other),
+        };
+
+        let cfa = (cfa_base as i64 + info.cfa_offset) as u64;
+        println!("CFA: 0x{:016x}", cfa);
+
+        // Compute address of return address: [CFA + ra_offset]
+        let ret_addr_addr = (cfa as i64 + info.ra_offset) as u64;
+
+        let ret_addr = ptrace::read(
+            self.debugger.process.pid,
+            ret_addr_addr as ptrace::AddressType,
+        )
+        .unwrap() as u64;
+
+        println!("Return address (caller RIP): 0x{:016x}", ret_addr - self.debugger.process.base_addr);
     }
 
     fn step_over(&mut self) {
@@ -128,7 +148,6 @@ impl<'a> CommandHandler<'a> {
             .expect("Failed to create Capstone object");
 
         let regs = getregs(self.debugger.process.pid).unwrap();
-
 
         let rip = regs.rip;
 
@@ -172,7 +191,7 @@ impl<'a> CommandHandler<'a> {
             println!("Failed to read memory at 0x{:x}", rip);
             return;
         }
-        
+
         debug!("{:?}", code);
 
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
@@ -184,7 +203,9 @@ impl<'a> CommandHandler<'a> {
                 i.mnemonic().unwrap_or(""),
                 i.op_str().unwrap_or("")
             );
-            self.debugger.dwarf.get_line_and_file(i.address() - self.debugger.process.base_addr);
+            self.debugger
+                .dwarf
+                .get_line_and_file(i.address() - self.debugger.process.base_addr);
         }
     }
 
@@ -205,14 +226,15 @@ impl<'a> CommandHandler<'a> {
             Err(err) => println!("Failed to get registers: {}", err),
         }
     }
-    
+
     #[allow(dead_code)]
-    fn print_file_and_line(&self){
+    fn print_file_and_line(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
 
         let rip = regs.rip;
 
-        self.debugger.dwarf.get_line_and_file(rip - self.debugger.process.base_addr);
-       
+        self.debugger
+            .dwarf
+            .get_line_and_file(rip - self.debugger.process.base_addr);
     }
 }
