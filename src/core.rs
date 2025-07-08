@@ -1,13 +1,13 @@
 use crate::breakpoint::*;
+use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
-use crate::dwarf::*;
+use log::{debug, info};
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use log::{debug, info};
 
 use crate::command::CommandHandler;
 
@@ -102,6 +102,13 @@ impl Debugger {
 
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
+    }
+
+    pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
+        self.functions
+            .iter()
+            .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
+            .map(|f| f.name.clone())
     }
 }
 

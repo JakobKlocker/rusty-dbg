@@ -9,7 +9,6 @@ mod process;
 mod stack_unwind;
 
 use std::env;
-use crate::stack_unwind::{get_unwind_info};
 
 fn main() {
     env_logger::init();
@@ -19,7 +18,7 @@ fn main() {
         println!("Usage: {} <pid|path>", args[0]);
         return;
     }
-    
+
     //let info = get_unwind_info(&args[1], 0x1030).unwrap();
 
     let debuger_process_name: &_ = &args[0].rsplit('/').next().unwrap_or("unknown");
