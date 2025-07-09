@@ -3,6 +3,7 @@ use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use std::io;
+use anyhow::Result;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -86,6 +87,37 @@ impl<'a> CommandHandler<'a> {
                     }
                 } else {
                     println!("No seconda argument provided for rm breakpoint");
+                }
+            }
+            Some("write") => {
+                let args: Vec<&str> = parts.collect();
+                if args.len() != 2 {
+                    println!("Usage: write <addr> <value>");
+                    return;
+                }
+
+                let addr = if args[0].starts_with("0x") {
+                    args[0][2..]
+                } else {
+                    args[0]
+                };
+
+                let value = if args[1].starts_with("0x") {
+                    args[1][2..]
+                } else {
+                    args[1]
+                };
+
+                match (u64::from_str_radix(addr, 16), u64::from_str_radix(value, 16)) {
+                    (Ok(addr), Ok(value)) => {
+                        match(self.write(addr, value)){
+                        Ok(()) => println!("writing value: {} to address: {:x}", value, addr),
+                        Err(e) => println!("ptrace write failed with error {}", e),
+                        }
+                    }
+                    _ => {
+                        println!("Usage: write <addr> <value>");
+                    }
                 }
             }
             Some("step") => {
@@ -172,6 +204,11 @@ impl<'a> CommandHandler<'a> {
             }
             first = false;
         }
+    }
+    
+    fn write(&self, addr: u64, value: u64) -> Result<()>{
+        ptrace::write(self.debugger.process.pid, addr, value)?;
+        Ok(())
     }
 
     fn step_over(&mut self) {
