@@ -97,20 +97,20 @@ impl<'a> CommandHandler<'a> {
                 }
 
                 let addr = if args[0].starts_with("0x") {
-                    args[0][2..]
+                    u64::from_str_radix(&args[0][2..], 16)
                 } else {
-                    args[0]
+                    u64::from_str_radix(args[0], 10)
                 };
 
                 let value = if args[1].starts_with("0x") {
-                    args[1][2..]
+                    i64::from_str_radix(&args[1][2..], 16)
                 } else {
-                    args[1]
+                    i64::from_str_radix(args[1], 10)
                 };
 
-                match (u64::from_str_radix(addr, 16), u64::from_str_radix(value, 16)) {
+                match (addr, value) {
                     (Ok(addr), Ok(value)) => {
-                        match(self.write(addr, value)){
+                        match self.write(addr, value){
                         Ok(()) => println!("writing value: {} to address: {:x}", value, addr),
                         Err(e) => println!("ptrace write failed with error {}", e),
                         }
@@ -206,8 +206,8 @@ impl<'a> CommandHandler<'a> {
         }
     }
     
-    fn write(&self, addr: u64, value: u64) -> Result<()>{
-        ptrace::write(self.debugger.process.pid, addr, value)?;
+    fn write(&self, addr: u64, value: i64) -> Result<()>{
+        ptrace::write(self.debugger.process.pid, addr as ptrace::AddressType, value)?;
         Ok(())
     }
 
