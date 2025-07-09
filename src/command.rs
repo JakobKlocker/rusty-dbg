@@ -1,9 +1,9 @@
 use crate::core::{Debugger, DebuggerState};
+use anyhow::Result;
 use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use std::io;
-use anyhow::Result;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -109,14 +109,30 @@ impl<'a> CommandHandler<'a> {
                 };
 
                 match (addr, value) {
-                    (Ok(addr), Ok(value)) => {
-                        match self.write(addr, value){
+                    (Ok(addr), Ok(value)) => match self.write(addr, value) {
                         Ok(()) => println!("writing value: {} to address: {:x}", value, addr),
                         Err(e) => println!("ptrace write failed with error {}", e),
-                        }
-                    }
+                    },
                     _ => {
                         println!("Usage: write <addr> <value>");
+                    }
+                }
+            }
+            Some("read") => {
+                if let Some(addr) = parts.next() {
+                    let addr = if addr.starts_with("0x") {
+                        u64::from_str_radix(&addr[2..], 16)
+                    } else {
+                        u64::from_str_radix(addr, 10)
+                    };
+                    match addr {
+                        Ok(addr) => match self.read(addr) {
+                            Ok(value) => println!("value at address {:x} is {}", addr, value),
+                            Err(e) => println!("read failed with error: {}", e),
+                        },
+                        Err(e) => {
+                            println!("Invalid address format: {}", e);
+                        }
                     }
                 }
             }
@@ -205,9 +221,19 @@ impl<'a> CommandHandler<'a> {
             first = false;
         }
     }
-    
-    fn write(&self, addr: u64, value: i64) -> Result<()>{
-        ptrace::write(self.debugger.process.pid, addr as ptrace::AddressType, value)?;
+
+    fn read(&self, addr: u64) -> Result<i64> {
+        Ok(ptrace::read(
+            self.debugger.process.pid,
+            addr as ptrace::AddressType,
+        )?)
+    }
+    fn write(&self, addr: u64, value: i64) -> Result<()> {
+        ptrace::write(
+            self.debugger.process.pid,
+            addr as ptrace::AddressType,
+            value,
+        )?;
         Ok(())
     }
 
