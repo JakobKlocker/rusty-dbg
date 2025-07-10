@@ -1,5 +1,5 @@
 use crate::core::{Debugger, DebuggerState};
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
@@ -87,6 +87,18 @@ impl<'a> CommandHandler<'a> {
                     }
                 } else {
                     println!("No seconda argument provided for rm breakpoint");
+                }
+            }
+            Some("dump") => {
+                match parts.next() {
+                    Some(size_str) => {
+                        let size = usize::from_str_radix(size_str, 10); //only dec for now
+                        match size {
+                            Ok(size) => self.dump_hex(size),
+                            _ => self.dump_hex(64),
+                        }
+                    }
+                    None => self.dump_hex(64),
                 }
             }
             Some("set") | Some("change") => {
@@ -188,6 +200,15 @@ impl<'a> CommandHandler<'a> {
         }
     }
 
+    fn dump_hex(&self, size: usize) {
+        let mut buf = vec![0u8; size as usize];
+        let regs = getregs(self.debugger.process.pid).unwrap();
+        match read_process_memory(self.debugger.process.pid, regs.rip as usize, &mut buf) {
+            Ok(_) => {}
+            Err(e) => println!("read process memory failed with error {}",e),
+        }
+    }
+
     fn print_offset(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
         let func_offset = regs.rip - self.debugger.process.base_addr;
@@ -284,9 +305,9 @@ impl<'a> CommandHandler<'a> {
         let num_bytes = 10;
         let mut code = vec![0u8; num_bytes];
 
-        if !read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
-            println!("Failed to read memory at 0x{:x}", rip);
-            return;
+        match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
+            Ok(_) => {}
+            Err(e) => println!("read process memory failed with error {}",e),
         }
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
         let next_inst = insns.iter().next().unwrap();
@@ -316,12 +337,10 @@ impl<'a> CommandHandler<'a> {
 
         let num_bytes = 64;
         let mut code = vec![0u8; num_bytes];
-
-        if !read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
-            println!("Failed to read memory at 0x{:x}", rip);
-            return;
+        match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
+            Ok(_) => {}
+            Err(e) => println!("read process memory failed with error {}",e),
         }
-
         debug!("{:?}", code);
 
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
