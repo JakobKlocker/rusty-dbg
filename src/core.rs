@@ -66,7 +66,6 @@ impl Debugger {
                 .remove_breakpoint(cur_addr, self.process.pid);
             regs.rip -= 1;
             let _ = setregs(self.process.pid, regs);
-            //ptrace::step(self.process.pid, None).expect("Single-step after breakpoint failed");
         }
     }
 
@@ -78,13 +77,25 @@ impl Debugger {
             }
             Ok(WaitStatus::Stopped(_, signal)) => {
                 let regs = getregs(self.process.pid).unwrap();
-                println!(
-                    "Process stopped by signal: {:?} at addr: 0x{:x}",
-                    signal,
-                    regs.rip - 1
-                );
-                if signal != nix::sys::signal::Signal::SIGTRAP{ //temp for now, thats why sigtrap check below stays
-                    nix::sys::ptrace::cont(self.process.pid, None).expect("Failed to continue process");
+                if let Some(function_name) = self.get_function_name(regs.rip - self.process.base_addr) {
+                    println!(
+                        "Process stopped by signal: {:?} at addr: 0x{:x} ({})",
+                        signal,
+                        regs.rip - 1,
+                        function_name
+                    );
+                } else {
+                    println!(
+                        "Process stopped by signal: {:?} at addr: 0x{:x}",
+                        signal,
+                        regs.rip - 1
+                    )
+                }
+
+                if signal != nix::sys::signal::Signal::SIGTRAP {
+                    //temp for now, thats why sigtrap check below stays
+                    nix::sys::ptrace::cont(self.process.pid, None)
+                        .expect("Failed to continue process");
                     return;
                 }
                 if signal == nix::sys::signal::Signal::SIGTRAP {
