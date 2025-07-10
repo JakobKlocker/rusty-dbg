@@ -4,7 +4,6 @@ use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use rustyline::{DefaultEditor, error::ReadlineError};
-use std::io;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -15,21 +14,22 @@ pub struct CommandHandler<'a> {
 impl<'a> CommandHandler<'a> {
     pub fn get_command(&self) -> String {
         let mut rl = DefaultEditor::new().unwrap();
-        let _ = rl.load_history("history.txt");
-        let mut command = String::new();
+        let _ = rl.load_history(".history");
+
         match rl.readline("Enter Command: ") {
             Ok(line) => {
-                rl.add_history_entry(&line);
+                let _ = rl.add_history_entry(&line).unwrap();
                 let _ = rl.save_history(".history");
                 line
             }
             Err(ReadlineError::Interrupted) => {
                 println!("^C");
-                std::process::exit(0); 
+                std::process::exit(0);
             }
-            Err(_) => {
-                println!("Error reading line.");
-                String::new()
+            
+            Err(err) => {
+                            eprintln!("Unexpected error: {:?}", err);
+            String::new()
             }
         }
     }
