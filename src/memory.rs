@@ -1,7 +1,7 @@
+use anyhow::Result;
 use libc::{iovec, pid_t, process_vm_readv};
 use nix::unistd::Pid;
-use anyhow::Result;
-use std::io::Error; 
+use std::io::Error;
 
 pub fn read_process_memory(pid: Pid, addr: usize, buf: &mut [u8]) -> Result<usize> {
     let local = iovec {

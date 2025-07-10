@@ -205,7 +205,29 @@ impl<'a> CommandHandler<'a> {
         let regs = getregs(self.debugger.process.pid).unwrap();
         match read_process_memory(self.debugger.process.pid, regs.rip as usize, &mut buf) {
             Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}",e),
+            Err(e) => println!("read process memory failed with error {}", e),
+        }
+
+        for (i, chunk) in buf.chunks(16).enumerate() {
+            print!("0x{:08X}: ", regs.rip as usize + i * 16);            
+
+            for byte in chunk {
+                print!("{:02X} ", byte);
+            }
+            for _ in 0..(16 - chunk.len()) {
+                print!("   ");
+            }
+            print!("|");
+
+            for byte in chunk {
+                let c = *byte as char;
+                if c.is_ascii_graphic() || c == ' ' {
+                    print!("{}", c);
+                } else {
+                    print!(".");
+                }
+            }
+            println!("|");
         }
     }
 
@@ -307,7 +329,7 @@ impl<'a> CommandHandler<'a> {
 
         match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
             Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}",e),
+            Err(e) => println!("read process memory failed with error {}", e),
         }
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
         let next_inst = insns.iter().next().unwrap();
@@ -339,7 +361,7 @@ impl<'a> CommandHandler<'a> {
         let mut code = vec![0u8; num_bytes];
         match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
             Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}",e),
+            Err(e) => println!("read process memory failed with error {}", e),
         }
         debug!("{:?}", code);
 
