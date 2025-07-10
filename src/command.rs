@@ -327,14 +327,14 @@ impl<'a> CommandHandler<'a> {
 
     fn dump_register(&self, reg: &str) {
         match self.get_register_value(reg){
-            Ok(value) => println!("Register {}: {}", reg, value),
-            Err(err) => println!("Failed to get register: {}", err),
+            Ok(value) => println!("{}: 0x{:x}", reg, value),
+            Err(err) => println!("Failed to get register {}", err),
         }
     }
 
     fn dump_registers(&self) {
         match getregs(self.debugger.process.pid) {
-            Ok(regs) => println!("Registers: {:?}", regs),
+            Ok(regs) => println!("{:?}", regs),
             Err(err) => println!("Failed to get registers: {}", err),
         }
     }
