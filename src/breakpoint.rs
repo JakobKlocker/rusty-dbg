@@ -39,6 +39,7 @@ impl Breakpoint {
 
         self.breakpoint.push((addr, original_byte));
         debug!("[SET BP] Breakpoint set.\n");
+        println!("breakpoint set on 0x{:x}", addr);
     }
 
     pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {

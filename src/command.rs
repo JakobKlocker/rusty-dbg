@@ -26,7 +26,7 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("bp") => {
+            Some("bp") | Some("b") => {
                 if let Some(arg) = parts.next() {
                     let arg = if arg.starts_with("0x") {
                         &arg[2..]
@@ -67,7 +67,7 @@ impl<'a> CommandHandler<'a> {
                     println!("No second argument provided for breakpoint");
                 }
             }
-            Some("rm-bp") => {
+            Some("rm-bp") | Some("rm") => {
                 if let Some(arg) = parts.next() {
                     let arg = if arg.starts_with("0x") {
                         &arg[2..]
@@ -173,15 +173,15 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-            Some("step") => {
+            Some("step") | Some("s") => {
                 ptrace::step(self.debugger.process.pid, None).expect("Single-step failed")
             }
-            Some("over") => self.step_over(),
+            Some("over") | Some("o") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
-            Some("show-bp") => self.debugger.breakpoint.show_breakpoints(),
-            Some("cont") => self.cont(),
-            Some("regs") => {
+            Some("show-bp") | Some("show")=> self.debugger.breakpoint.show_breakpoints(),
+            Some("continue") | Some("c") => self.cont(),
+            Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
                     self.dump_register(reg);
                 } else {
@@ -189,7 +189,7 @@ impl<'a> CommandHandler<'a> {
                 }
             }
             Some("offset") => self.print_offset(),
-            Some("bt") => {
+            Some("backtrace") | Some("bt") => {
                 if let Err(e) = self.backtrace() {
                     println!("");
                     println!("End of backtrace: {}", e);

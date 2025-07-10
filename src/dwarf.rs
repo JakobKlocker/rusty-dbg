@@ -41,14 +41,11 @@ impl DwarfContext {
                 })
             };
 
-        // Borrow a `Cow<[u8]>` to create an `EndianSlice`.
         let borrow_section =
             |section| gimli::EndianSlice::new(borrow::Cow::as_ref(section), self.endian);
 
-        // Load all of the sections.
         let dwarf_sections = gimli::DwarfSections::load(&load_section).unwrap();
 
-        // Create `EndianSlice`s for all of the sections.
         let dwarf = dwarf_sections.borrow(borrow_section);
 
         let mut units = dwarf.units();
