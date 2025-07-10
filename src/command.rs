@@ -3,6 +3,7 @@ use anyhow::{bail, Result};
 use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
+use rustyline::{DefaultEditor, error::ReadlineError};
 use std::io;
 
 use crate::memory::read_process_memory;
@@ -13,12 +14,24 @@ pub struct CommandHandler<'a> {
 
 impl<'a> CommandHandler<'a> {
     pub fn get_command(&self) -> String {
-        println!("Enter Command:");
-
+        let mut rl = DefaultEditor::new().unwrap();
+        let _ = rl.load_history("history.txt");
         let mut command = String::new();
-        io::stdin().read_line(&mut command).unwrap();
-        let command = command.trim();
-        return command.to_string();
+        match rl.readline("Enter Command: ") {
+            Ok(line) => {
+                rl.add_history_entry(&line);
+                let _ = rl.save_history(".history");
+                line
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("^C");
+                std::process::exit(0); 
+            }
+            Err(_) => {
+                println!("Error reading line.");
+                String::new()
+            }
+        }
     }
 
     pub fn handle_command(&mut self, command: &str) {
@@ -179,7 +192,7 @@ impl<'a> CommandHandler<'a> {
             Some("over") | Some("o") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
-            Some("show-bp") | Some("show")=> self.debugger.breakpoint.show_breakpoints(),
+            Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
             Some("continue") | Some("c") => self.cont(),
             Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
@@ -209,7 +222,7 @@ impl<'a> CommandHandler<'a> {
         }
 
         for (i, chunk) in buf.chunks(16).enumerate() {
-            print!("0x{:08X}: ", regs.rip as usize + i * 16);            
+            print!("0x{:08X}: ", regs.rip as usize + i * 16);
 
             for byte in chunk {
                 print!("{:02X} ", byte);
