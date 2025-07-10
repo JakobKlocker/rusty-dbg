@@ -326,7 +326,10 @@ impl<'a> CommandHandler<'a> {
     }
 
     fn dump_register(&self, reg: &str) {
-        println!("reg:{}", reg);
+        match self.get_register_value(reg){
+            Ok(value) => println!("Register {}: {}", reg, value),
+            Err(err) => println!("Failed to get register: {}", err),
+        }
     }
 
     fn dump_registers(&self) {
@@ -347,9 +350,9 @@ impl<'a> CommandHandler<'a> {
             .get_line_and_file(rip - self.debugger.process.base_addr);
     }
 
-    fn get_register_value(&self, name: &str) -> Option<u64> {
-        let regs = getregs(self.debugger.process.pid);
-        match name {
+    fn get_register_value(&self, name: &str) -> Result<u64> {
+        let regs = getregs(self.debugger.process.pid)?;
+        let value = match name {
             "rip" => Some(regs.rip),
             "rax" => Some(regs.rax),
             "rbx" => Some(regs.rbx),
@@ -369,6 +372,8 @@ impl<'a> CommandHandler<'a> {
             "r15" => Some(regs.r15),
             "eflags" => Some(regs.eflags),
             _ => None,
-        }
+        };
+
+        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
     }
 }
