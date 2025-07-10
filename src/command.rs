@@ -144,7 +144,13 @@ impl<'a> CommandHandler<'a> {
 
             Some("show-bp") => self.debugger.breakpoint.show_breakpoints(),
             Some("cont") => self.cont(),
-            Some("regs") => self.print_registers(),
+            Some("regs") => {
+                if let Some(reg) = parts.next() {
+                    self.dump_register(reg);
+                } else {
+                    self.dump_registers();
+                }
+            }
             Some("offset") => self.print_offset(),
             Some("bt") => {
                 if let Err(e) = self.backtrace() {
@@ -319,9 +325,16 @@ impl<'a> CommandHandler<'a> {
         std::process::exit(0);
     }
 
-    fn print_registers(&self) {
+    fn dump_register(&self, reg: &str) {
+        match self.get_register_value(reg){
+            Ok(value) => println!("{}: 0x{:x}", reg, value),
+            Err(err) => println!("Failed to get register {}", err),
+        }
+    }
+
+    fn dump_registers(&self) {
         match getregs(self.debugger.process.pid) {
-            Ok(regs) => println!("Registers: {:?}", regs),
+            Ok(regs) => println!("{:?}", regs),
             Err(err) => println!("Failed to get registers: {}", err),
         }
     }
@@ -335,5 +348,32 @@ impl<'a> CommandHandler<'a> {
         self.debugger
             .dwarf
             .get_line_and_file(rip - self.debugger.process.base_addr);
+    }
+
+    fn get_register_value(&self, name: &str) -> Result<u64> {
+        let regs = getregs(self.debugger.process.pid)?;
+        let value = match name {
+            "rip" => Some(regs.rip),
+            "rax" => Some(regs.rax),
+            "rbx" => Some(regs.rbx),
+            "rcx" => Some(regs.rcx),
+            "rdx" => Some(regs.rdx),
+            "rsi" => Some(regs.rsi),
+            "rdi" => Some(regs.rdi),
+            "rsp" => Some(regs.rsp),
+            "rbp" => Some(regs.rbp),
+            "r8" => Some(regs.r8),
+            "r9" => Some(regs.r9),
+            "r10" => Some(regs.r10),
+            "r11" => Some(regs.r11),
+            "r12" => Some(regs.r12),
+            "r13" => Some(regs.r13),
+            "r14" => Some(regs.r14),
+            "r15" => Some(regs.r15),
+            "eflags" => Some(regs.eflags),
+            _ => None,
+        };
+
+        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
     }
 }
