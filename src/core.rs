@@ -8,6 +8,7 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
+use anyhow::{Result, bail};
 
 use crate::command::CommandHandler;
 
@@ -129,7 +130,7 @@ impl Debugger {
     }
 
     pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
-        let addr = if let Ok(addr) = parse_address(input) {
+        let addr = if let Ok(addr) = self.parse_address(input) {
             addr
         } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
             debug!(
@@ -141,12 +142,12 @@ impl Debugger {
             bail!("Invalid breakpoint input: {}", input);
         };
 
+        println!("above set_bp");
         self.breakpoint.set_breakpoint(addr, self.process.pid);
-        println!("Breakpoint set at 0x{:x}", addr);
         Ok(())
     }
 
-    fn parse_address(input: &str) -> Result<u64> {
+    fn parse_address(&self, input: &str) -> Result<u64> {
         let trimmed = input.trim_start_matches("0x");
         u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))
     }

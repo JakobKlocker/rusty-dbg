@@ -10,6 +10,7 @@ use std::fs;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
+use crate::commands::CommandRouter;
 pub struct CommandHandler<'a> {
     pub debugger: &'a mut Debugger,
 }
@@ -38,6 +39,10 @@ impl<'a> CommandHandler<'a> {
     }
 
     pub fn handle_command(&mut self, command: &str) {
+        println!("Command test: {:?}", command);
+        let router = CommandRouter::new();
+        router.handle(&command, self.debugger);
+        return;
         let mut parts = command.split_whitespace();
         let command_word = parts.next();
 

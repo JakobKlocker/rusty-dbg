@@ -1,7 +1,8 @@
 use crate::commands::DebugCommand;
 use crate::core::Debugger;
 use anyhow::Result;
-pub struct BreakpintCommand;
+#[derive(Clone)]
+pub struct BreakpointCommand;
 
 impl DebugCommand for BreakpointCommand {
     fn name(&self) -> &'static str {
@@ -16,6 +17,7 @@ impl DebugCommand for BreakpointCommand {
         let arg = args
             .get(0)
             .ok_or_else(|| anyhow::anyhow!("Missing address"))?;
+        println!("execute once");
         debugger.set_breakpoint_by_input(arg)
     }
 }
