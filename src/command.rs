@@ -3,7 +3,10 @@ use anyhow::{bail, Result};
 use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
+use object::Object;
 use rustyline::{DefaultEditor, error::ReadlineError};
+use std::fs;
+use object::ObjectSection;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -168,6 +171,9 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
+            Some("sections") => {
+                self.print_sections();
+            }
             Some("read") => {
                 if let Some(addr) = parts.next() {
                     let addr = if addr.starts_with("0x") {
@@ -211,6 +217,17 @@ impl<'a> CommandHandler<'a> {
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
+    }
+    
+    fn print_sections(&self){
+            let data = fs::read(self.debugger.path.clone()).unwrap();
+            let obj_file = object::File::parse(&*data).unwrap();
+            for section in obj_file.sections(){
+            println!(            "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
+            section.name().unwrap_or("<unnamed>"),
+            section.address(),
+            section.size(),
+        );}
     }
 
     fn dump_hex(&self, size: usize) {
