@@ -77,7 +77,9 @@ impl Debugger {
             }
             Ok(WaitStatus::Stopped(_, signal)) => {
                 let regs = getregs(self.process.pid).unwrap();
-                if let Some(function_name) = self.get_function_name(regs.rip - self.process.base_addr) {
+                if let Some(function_name) =
+                    self.get_function_name(regs.rip - self.process.base_addr)
+                {
                     println!(
                         "Process stopped by signal: {:?} at addr: 0x{:x} ({})",
                         signal,
@@ -124,6 +126,29 @@ impl Debugger {
             .iter()
             .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
             .map(|f| f.name.clone())
+    }
+
+    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+        let addr = if let Ok(addr) = parse_address(input) {
+            addr
+        } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
+            debug!(
+                "Found function, setting bp on {}, addr: {:#x}",
+                input, function.offset
+            );
+            function.offset + self.process.base_addr
+        } else {
+            bail!("Invalid breakpoint input: {}", input);
+        };
+
+        self.breakpoint.set_breakpoint(addr, self.process.pid);
+        println!("Breakpoint set at 0x{:x}", addr);
+        Ok(())
+    }
+
+    fn parse_address(input: &str) -> Result<u64> {
+        let trimmed = input.trim_start_matches("0x");
+        u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))
     }
 }
 
