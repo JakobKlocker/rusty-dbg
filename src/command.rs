@@ -4,9 +4,9 @@ use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::{self, getregs};
 use object::Object;
-use rustyline::{DefaultEditor, error::ReadlineError};
-use std::fs;
 use object::ObjectSection;
+use rustyline::{error::ReadlineError, DefaultEditor};
+use std::fs;
 
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
@@ -29,10 +29,10 @@ impl<'a> CommandHandler<'a> {
                 println!("^C");
                 std::process::exit(0);
             }
-            
+
             Err(err) => {
-                            eprintln!("Unexpected error: {:?}", err);
-            String::new()
+                eprintln!("Unexpected error: {:?}", err);
+                String::new()
             }
         }
     }
@@ -106,16 +106,19 @@ impl<'a> CommandHandler<'a> {
                 }
             }
             Some("dump") => {
-                match parts.next() {
-                    Some(size_str) => {
-                        let size = usize::from_str_radix(size_str, 10); //only dec for now
-                        match size {
-                            Ok(size) => self.dump_hex(size),
-                            _ => self.dump_hex(64),
-                        }
+                let size = parts
+                    .next()
+                    .and_then(|s| usize::from_str_radix(s, 10).ok())
+                    .unwrap_or(64);
+
+                let addr = parts.next().and_then(|s| {
+                    if s.starts_with("0x") {
+                        u64::from_str_radix(&s[2..], 16).ok()
+                    } else {
+                        u64::from_str_radix(s, 10).ok()
                     }
-                    None => self.dump_hex(64),
-                }
+                });
+                self.dump_hex(addr, size);
             }
             Some("set") | Some("change") => {
                 let reg = parts.next();
@@ -218,28 +221,34 @@ impl<'a> CommandHandler<'a> {
             _ => println!("command not found {}", command),
         }
     }
-    
-    fn print_sections(&self){
-            let data = fs::read(self.debugger.path.clone()).unwrap();
-            let obj_file = object::File::parse(&*data).unwrap();
-            for section in obj_file.sections(){
-            println!(            "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
-            section.name().unwrap_or("<unnamed>"),
-            section.address(),
-            section.size(),
-        );}
+
+    fn print_sections(&self) {
+        let data = fs::read(self.debugger.path.clone()).unwrap();
+        let obj_file = object::File::parse(&*data).unwrap();
+        for section in obj_file.sections() {
+            println!(
+                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
+                section.name().unwrap_or("<unnamed>"),
+                section.address(),
+                section.size(),
+            );
+        }
     }
 
-    fn dump_hex(&self, size: usize) {
+    fn dump_hex(&self, addr: Option<u64>, size: usize) {
         let mut buf = vec![0u8; size as usize];
         let regs = getregs(self.debugger.process.pid).unwrap();
-        match read_process_memory(self.debugger.process.pid, regs.rip as usize, &mut buf) {
+        let addr_to_read = addr.unwrap_or(regs.rip);
+        match read_process_memory(self.debugger.process.pid, addr_to_read as usize, &mut buf) {
             Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
+            Err(e) => {
+                println!("read process memory failed with error {}", e);
+                return;
+            }
         }
 
         for (i, chunk) in buf.chunks(16).enumerate() {
-            print!("0x{:08X}: ", regs.rip as usize + i * 16);
+            print!("0x{:08X}: ", addr_to_read as usize + i * 16);
 
             for byte in chunk {
                 print!("{:02X} ", byte);
