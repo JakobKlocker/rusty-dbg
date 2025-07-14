@@ -143,8 +143,7 @@ impl Debugger {
         };
 
         println!("above set_bp");
-        self.breakpoint.set_breakpoint(addr, self.process.pid);
-        Ok(())
+        self.breakpoint.set_breakpoint(addr, self.process.pid)
     }
 
     pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
@@ -154,8 +153,7 @@ impl Debugger {
             bail!("Invalid rm breakpoint input: {}", input);
         };
 
-        self.breakpoint.remove_breakpoint(addr, self.process.pid);
-        Ok(())
+        self.breakpoint.remove_breakpoint(addr, self.process.pid)
     }
 
 

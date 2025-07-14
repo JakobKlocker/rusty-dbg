@@ -46,69 +46,6 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("bp") | Some("b") => {
-                if let Some(arg) = parts.next() {
-                    let arg = if arg.starts_with("0x") {
-                        &arg[2..]
-                    } else {
-                        arg
-                    };
-                    match u64::from_str_radix(arg, 16) {
-                        Ok(breakpoint_addr) => {
-                            println!("{:#x}", breakpoint_addr);
-                            self.debugger
-                                .breakpoint
-                                .set_breakpoint(breakpoint_addr, self.debugger.process.pid);
-                        }
-                        Err(_) => {
-                            if let Some(function) = self
-                                .debugger
-                                .functions
-                                .iter()
-                                .find(|function| function.name == arg)
-                            {
-                                debug!(
-                                    "Found function, setting bp on {}, addr: {:#x}",
-                                    arg, function.offset
-                                );
-                                self.debugger.breakpoint.set_breakpoint(
-                                    function.offset + self.debugger.process.base_addr,
-                                    self.debugger.process.pid,
-                                );
-                            } else {
-                                println!(
-                                    "Breakpoint failed, has to be addr or function name: {}",
-                                    arg
-                                );
-                            }
-                        }
-                    }
-                } else {
-                    println!("No second argument provided for breakpoint");
-                }
-            }
-            Some("rm-bp") | Some("rm") => {
-                if let Some(arg) = parts.next() {
-                    let arg = if arg.starts_with("0x") {
-                        &arg[2..]
-                    } else {
-                        arg
-                    };
-                    match u64::from_str_radix(arg, 16) {
-                        Ok(breakpoint_addr) => {
-                            println!("remove {}", breakpoint_addr);
-                            self.debugger
-                                .breakpoint
-                                .remove_breakpoint(breakpoint_addr, self.debugger.process.pid);
-                        }
-                        Err(e) => {
-                            println!("rm breakpoint failed: {}", e);
-                        }
-                    }
-                } else {
-                    println!("No seconda argument provided for rm breakpoint");
-                }
-            }
             Some("dump") => {
                 let size = parts
                     .next()
