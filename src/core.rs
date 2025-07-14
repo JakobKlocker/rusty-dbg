@@ -147,6 +147,18 @@ impl Debugger {
         Ok(())
     }
 
+    pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+        let addr = if let Ok(addr) = self.parse_address(input) {
+            addr
+        } else {
+            bail!("Invalid rm breakpoint input: {}", input);
+        };
+
+        self.breakpoint.remove_breakpoint(addr, self.process.pid);
+        Ok(())
+    }
+
+
     fn parse_address(&self, input: &str) -> Result<u64> {
         let trimmed = input.trim_start_matches("0x");
         u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))

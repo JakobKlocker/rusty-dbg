@@ -1,6 +1,7 @@
 pub mod breakpoint;
 pub mod command_trait;
 pub use breakpoint::BreakpointCommand;
+pub use breakpoint::RemoveBreakpointCommand;
 pub use command_trait::DebugCommand;
 use crate::core::Debugger;
 
@@ -19,6 +20,7 @@ impl CommandRouter {
 
         let all_commands: Vec<Box<dyn DebugCommand>> = vec![
             Box::new(BreakpointCommand),
+            Box::new(RemoveBreakpointCommand)
         ];
 
         for cmd in all_commands {
@@ -31,7 +33,6 @@ impl CommandRouter {
     }
 
     pub fn handle(&self, input: &str, dbg: &mut Debugger) {
-        println!("Hanlde once");
         let mut parts = input.split_whitespace();
         let cmd = match parts.next() {
             Some(c) => c,
