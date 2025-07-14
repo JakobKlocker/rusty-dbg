@@ -46,21 +46,6 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("dump") => {
-                let size = parts
-                    .next()
-                    .and_then(|s| usize::from_str_radix(s, 10).ok())
-                    .unwrap_or(64);
-
-                let addr = parts.next().and_then(|s| {
-                    if s.starts_with("0x") {
-                        u64::from_str_radix(&s[2..], 16).ok()
-                    } else {
-                        u64::from_str_radix(s, 10).ok()
-                    }
-                });
-                self.dump_hex(addr, size);
-            }
             Some("set") | Some("change") => {
                 let reg = parts.next();
                 let val = parts.next();
@@ -175,9 +160,6 @@ impl<'a> CommandHandler<'a> {
             );
         }
     }
-
-    fn dump_hex(&self, addr: Option<u64>, size: usize) {
-   }
 
     fn print_offset(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
