@@ -2,15 +2,16 @@ use crate::breakpoint::*;
 use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
+use anyhow::{bail, Result};
 use log::{debug, info};
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use anyhow::{Result, bail};
 
 use crate::command::CommandHandler;
+use crate::memory::read_process_memory;
 
 #[derive(Debug, Clone)]
 pub enum DebuggerState {
@@ -156,10 +157,49 @@ impl Debugger {
         self.breakpoint.remove_breakpoint(addr, self.process.pid)
     }
 
+    pub fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()> {
+        let addr = if let Ok(addr) = self.parse_address(addr_str) {
+            addr
+        } else {
+            bail!("Invalid address: {}", addr_str);
+        };
+        let mut buf = vec![0u8; size];
+        read_process_memory(self.process.pid, addr as usize, &mut buf)?;
+
+        for (i, chunk) in buf.chunks(16).enumerate() {
+            print!("0x{:08X}: ", addr as usize + i * 16);
+
+            for byte in chunk {
+                print!("{:02X} ", byte);
+            }
+            for _ in 0..(16 - chunk.len()) {
+                print!("   ");
+            }
+            print!("|");
+
+            for byte in chunk {
+                let c = *byte as char;
+                if c.is_ascii_graphic() || c == ' ' {
+                    print!("{}", c);
+                } else {
+                    print!(".");
+                }
+            }
+            println!("|");
+        }
+        Ok(())
+    }
 
     fn parse_address(&self, input: &str) -> Result<u64> {
-        let trimmed = input.trim_start_matches("0x");
-        u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))
+        let trimmed = input.trim();
+
+        if let Some(stripped) = trimmed.strip_prefix("0x") {
+            u64::from_str_radix(stripped, 16)
+                .map_err(|e| anyhow::anyhow!("invalid hex address: {}", e))
+        } else {
+            u64::from_str_radix(trimmed, 10)
+                .map_err(|e| anyhow::anyhow!("invalid dec address: {}", e))
+        }
     }
 }
 

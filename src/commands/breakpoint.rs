@@ -36,6 +36,7 @@ impl DebugCommand for RemoveBreakpointCommand{
         let arg = args
             .get(0)
             .ok_or_else(|| anyhow::anyhow!("Missing address"))?;
+        println!("insinde rmb");
         debugger.rm_breakpoint_by_input(arg)
     }
 }

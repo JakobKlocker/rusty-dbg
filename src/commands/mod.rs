@@ -1,8 +1,10 @@
 pub mod breakpoint;
 pub mod command_trait;
+pub mod dump_hex;
 pub use breakpoint::BreakpointCommand;
 pub use breakpoint::RemoveBreakpointCommand;
 pub use command_trait::DebugCommand;
+pub use dump_hex::DumpHexCommand;
 use crate::core::Debugger;
 
 
@@ -20,7 +22,8 @@ impl CommandRouter {
 
         let all_commands: Vec<Box<dyn DebugCommand>> = vec![
             Box::new(BreakpointCommand),
-            Box::new(RemoveBreakpointCommand)
+            Box::new(RemoveBreakpointCommand),
+            Box::new(DumpHexCommand),
         ];
 
         for cmd in all_commands {

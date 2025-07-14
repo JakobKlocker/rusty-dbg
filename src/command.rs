@@ -177,39 +177,7 @@ impl<'a> CommandHandler<'a> {
     }
 
     fn dump_hex(&self, addr: Option<u64>, size: usize) {
-        let mut buf = vec![0u8; size as usize];
-        let regs = getregs(self.debugger.process.pid).unwrap();
-        let addr_to_read = addr.unwrap_or(regs.rip);
-        match read_process_memory(self.debugger.process.pid, addr_to_read as usize, &mut buf) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("read process memory failed with error {}", e);
-                return;
-            }
-        }
-
-        for (i, chunk) in buf.chunks(16).enumerate() {
-            print!("0x{:08X}: ", addr_to_read as usize + i * 16);
-
-            for byte in chunk {
-                print!("{:02X} ", byte);
-            }
-            for _ in 0..(16 - chunk.len()) {
-                print!("   ");
-            }
-            print!("|");
-
-            for byte in chunk {
-                let c = *byte as char;
-                if c.is_ascii_graphic() || c == ' ' {
-                    print!("{}", c);
-                } else {
-                    print!(".");
-                }
-            }
-            println!("|");
-        }
-    }
+   }
 
     fn print_offset(&self) {
         let regs = getregs(self.debugger.process.pid).unwrap();
