@@ -9,6 +9,7 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
+use nix::sys::ptrace;
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
@@ -130,7 +131,7 @@ impl Debugger {
             .map(|f| f.name.clone())
     }
 
-    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
         let addr = if let Ok(addr) = self.parse_address(input) {
             addr
         } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
@@ -142,9 +143,8 @@ impl Debugger {
         } else {
             bail!("Invalid breakpoint input: {}", input);
         };
-
-        println!("above set_bp");
-        self.breakpoint.set_breakpoint(addr, self.process.pid)
+        self.breakpoint.set_breakpoint(addr, self.process.pid);
+        Ok(addr)
     }
 
     pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
@@ -158,11 +158,7 @@ impl Debugger {
     }
 
     pub fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()> {
-        let addr = if let Ok(addr) = self.parse_address(addr_str) {
-            addr
-        } else {
-            bail!("Invalid address: {}", addr_str);
-        };
+        let addr = self.parse_address(addr_str)?;
         let mut buf = vec![0u8; size];
         read_process_memory(self.process.pid, addr as usize, &mut buf)?;
 
@@ -187,6 +183,14 @@ impl Debugger {
             }
             println!("|");
         }
+        Ok(())
+    }
+
+    pub fn patch(&self, addr_str: &str, value_str: &str) -> Result<()> {
+        let addr = self.parse_address(addr_str)?;
+        let value = self.parse_address(value_str)?;
+
+        ptrace::write(self.process.pid, addr as ptrace::AddressType, value as i64)?;
         Ok(())
     }
 

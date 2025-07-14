@@ -38,7 +38,6 @@ impl Breakpoint {
 
         self.breakpoint.push((addr, original_byte));
         debug!("[SET BP] Breakpoint set.\n");
-        println!("breakpoint set on 0x{:x}", addr);
         Ok(())
     }
 
@@ -64,7 +63,6 @@ impl Breakpoint {
             ptrace::write(pid, aligned_addr as *mut libc::c_void, restored_word as i64)?;
 
             self.breakpoint.remove(pos);
-            println!("breakpoint removed at 0x{:x}", addr);
         } else {
             println!("No breakpoint found at {:#x}", addr);
         }

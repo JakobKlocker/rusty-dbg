@@ -1,6 +1,8 @@
 pub mod breakpoint;
 pub mod command_trait;
 pub mod dump_hex;
+pub mod patch;
+
 pub use breakpoint::BreakpointCommand;
 pub use breakpoint::RemoveBreakpointCommand;
 pub use command_trait::DebugCommand;
