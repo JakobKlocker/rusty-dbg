@@ -7,6 +7,7 @@ mod map;
 mod memory;
 mod process;
 mod stack_unwind;
+mod commands;
 
 use std::env;
 

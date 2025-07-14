@@ -66,10 +66,10 @@ impl Breakpoint {
                 .expect("Failed to write restored word");
 
             self.breakpoint.remove(pos);
-            debug!("[REMOVE BP] Breakpoint removed.\n");
+            println!("breakpoint removed at 0x{:x}", addr);
             true
         } else {
-            debug!("[REMOVE BP] No breakpoint found at {:#x}", addr);
+            println!("No breakpoint found at {:#x}", addr);
             false
         }
     }

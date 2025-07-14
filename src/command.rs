@@ -8,6 +8,7 @@ use object::ObjectSection;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::fs;
 
+use crate::commands::CommandRouter;
 use crate::memory::read_process_memory;
 use crate::stack_unwind::*;
 pub struct CommandHandler<'a> {
@@ -38,6 +39,9 @@ impl<'a> CommandHandler<'a> {
     }
 
     pub fn handle_command(&mut self, command: &str) {
+        let router = CommandRouter::new();
+        router.handle(&command, self.debugger);
+        return;
         let mut parts = command.split_whitespace();
         let command_word = parts.next();
 

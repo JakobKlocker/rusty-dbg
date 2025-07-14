@@ -8,6 +8,7 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
+use anyhow::{Result, bail};
 
 use crate::command::CommandHandler;
 
@@ -77,7 +78,9 @@ impl Debugger {
             }
             Ok(WaitStatus::Stopped(_, signal)) => {
                 let regs = getregs(self.process.pid).unwrap();
-                if let Some(function_name) = self.get_function_name(regs.rip - self.process.base_addr) {
+                if let Some(function_name) =
+                    self.get_function_name(regs.rip - self.process.base_addr)
+                {
                     println!(
                         "Process stopped by signal: {:?} at addr: 0x{:x} ({})",
                         signal,
@@ -124,6 +127,41 @@ impl Debugger {
             .iter()
             .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
             .map(|f| f.name.clone())
+    }
+
+    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+        let addr = if let Ok(addr) = self.parse_address(input) {
+            addr
+        } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
+            debug!(
+                "Found function, setting bp on {}, addr: {:#x}",
+                input, function.offset
+            );
+            function.offset + self.process.base_addr
+        } else {
+            bail!("Invalid breakpoint input: {}", input);
+        };
+
+        println!("above set_bp");
+        self.breakpoint.set_breakpoint(addr, self.process.pid);
+        Ok(())
+    }
+
+    pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+        let addr = if let Ok(addr) = self.parse_address(input) {
+            addr
+        } else {
+            bail!("Invalid rm breakpoint input: {}", input);
+        };
+
+        self.breakpoint.remove_breakpoint(addr, self.process.pid);
+        Ok(())
+    }
+
+
+    fn parse_address(&self, input: &str) -> Result<u64> {
+        let trimmed = input.trim_start_matches("0x");
+        u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))
     }
 }
 
