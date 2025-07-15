@@ -1,13 +1,14 @@
 mod breakpoint;
-mod command;
+mod commands;
 mod core;
 mod dwarf;
 mod functions;
 mod map;
 mod memory;
 mod process;
+mod repl;
 mod stack_unwind;
-mod commands;
+use repl::Repl;
 
 use std::env;
 
@@ -27,8 +28,7 @@ fn main() {
         debugee_pid_path.to_string(),
         debuger_process_name.to_string(),
     );
-    dbg.print_functions();
-
     dbg.process.get_base_addr_from_map();
-    dbg.run();
+    let mut repl = Repl { debugger: &mut dbg };
+    repl.run();
 }

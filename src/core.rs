@@ -4,6 +4,7 @@ use crate::functions::*;
 use crate::process::*;
 use anyhow::{bail, Result};
 use capstone::prelude::*;
+use libc::user_regs_struct;
 use log::{debug, info};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
@@ -14,7 +15,6 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
 use crate::stack_unwind::get_unwind_info;
 
@@ -48,21 +48,6 @@ impl Debugger {
         }
     }
 
-    pub fn run(&mut self) {
-        loop {
-            let state = self.state.clone();
-            match state {
-                DebuggerState::AwaitingTrap => self.resume_and_wait(),
-                DebuggerState::Interactive => {
-                    let mut handler = CommandHandler { debugger: self };
-                    let input = handler.get_command();
-                    handler.handle_command(input.as_str());
-                }
-            }
-            info!("state: {:?}", self.state);
-        }
-    }
-
     fn handle_sigtrap(&mut self) {
         // remove BP and replace with org. once hit
         let mut regs = getregs(self.process.pid).unwrap();
@@ -70,13 +55,13 @@ impl Debugger {
         info!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
         if self.breakpoint.is_breakpoint(cur_addr) {
             self.breakpoint
-                .remove_breakpoint(cur_addr, self.process.pid);
+                .remove_breakpoint(cur_addr, self.process.pid).unwrap();
             regs.rip -= 1;
             let _ = setregs(self.process.pid, regs);
         }
     }
 
-    fn resume_and_wait(&mut self) {
+    pub fn resume_and_wait(&mut self) {
         let status = waitpid(self.process.pid, None);
         match status {
             Ok(WaitStatus::Exited(_, exit_status)) => {
@@ -193,7 +178,6 @@ impl Debugger {
             }
             first = false;
         }
-        Ok(())
     }
 
     pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()> {
@@ -264,6 +248,10 @@ impl Debugger {
             .map(|f| f.name.clone())
     }
 
+    pub fn get_registers(&self) -> Result<user_regs_struct> {
+        Ok(getregs(self.process.pid)?)
+    }
+
     pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
         let addr = if let Ok(addr) = self.parse_address(input) {
             addr
@@ -276,7 +264,7 @@ impl Debugger {
         } else {
             bail!("Invalid breakpoint input: {}", input);
         };
-        self.breakpoint.set_breakpoint(addr, self.process.pid);
+        self.breakpoint.set_breakpoint(addr, self.process.pid)?;
         Ok(addr)
     }
 
@@ -362,8 +350,8 @@ impl Debugger {
         let next_inst = insns.iter().next().unwrap();
         if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
-            self.breakpoint.set_breakpoint(next_addr, self.process.pid);
-            self.cont();
+            self.breakpoint.set_breakpoint(next_addr, self.process.pid)?;
+            self.cont()?;
         } else {
             ptrace::step(self.process.pid, None)?;
         }
@@ -415,6 +403,15 @@ impl Debugger {
             );
         }
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    fn print_file_and_line(&self) {
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        self.dwarf.get_line_and_file(rip - self.process.base_addr);
     }
 
     fn parse_address(&self, input: &str) -> Result<u64> {

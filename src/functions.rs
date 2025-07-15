@@ -20,7 +20,6 @@ impl FunctionInfo {
                 for sym in elf.syms.iter() {
                     if sym.is_function() {
                         if let Some(name) = elf.strtab.get_at(sym.st_name) {
-                            // replace with get_at
                             debug!("{} {}", name, sym.st_value);
                             ret.push(FunctionInfo {
                                 name: name.to_string(),

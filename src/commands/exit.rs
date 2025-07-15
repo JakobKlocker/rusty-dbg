@@ -13,8 +13,8 @@ impl DebugCommand for ExitCommand {
         &[]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
-        debugger.exit();
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
+        debugger.exit()?;
         Ok(())
     }
 }
