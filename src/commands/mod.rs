@@ -10,6 +10,7 @@ pub use command_trait::DebugCommand;
 pub use dump_hex::DumpHexCommand;
 pub use control::SingleStepCommand;
 use crate::commands::control::ContinueCommand;
+use crate::commands::control::StepOverCommand;
 use crate::core::Debugger;
 
 
@@ -30,7 +31,8 @@ impl CommandRouter {
             Box::new(RemoveBreakpointCommand),
             Box::new(DumpHexCommand),
             Box::new(SingleStepCommand),
-            Box::new(ContinueCommand)
+            Box::new(ContinueCommand),
+            Box::new(StepOverCommand)
         ];
 
         for cmd in all_commands {

@@ -92,11 +92,9 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-           Some("over") | Some("o") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
             Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
-            Some("continue") | Some("c") => self.cont(),
             Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
                     self.dump_register(reg);
@@ -207,39 +205,6 @@ impl<'a> CommandHandler<'a> {
             value,
         )?;
         Ok(())
-    }
-
-    fn step_over(&mut self) {
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("Failed to create Capstone object");
-
-        let regs = getregs(self.debugger.process.pid).unwrap();
-
-        let rip = regs.rip;
-
-        let num_bytes = 10;
-        let mut code = vec![0u8; num_bytes];
-
-        match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
-            Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
-        }
-        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
-        let next_inst = insns.iter().next().unwrap();
-        if next_inst.mnemonic() == Some("call") {
-            let next_addr = rip + next_inst.len() as u64;
-            self.debugger
-                .breakpoint
-                .set_breakpoint(next_addr, self.debugger.process.pid);
-            self.cont();
-        } else {
-            ptrace::step(self.debugger.process.pid, None).expect("Single-step failed");
-        }
     }
 
     fn dissasembl_instructions(&self) {

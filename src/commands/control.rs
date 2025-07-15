@@ -7,6 +7,9 @@ pub struct SingleStepCommand;
 #[derive(Clone)]
 pub struct ContinueCommand;
 
+#[derive(Clone)]
+pub struct StepOverCommand;
+
 impl DebugCommand for SingleStepCommand {
     fn name(&self) -> &'static str {
         "step"
@@ -32,5 +35,19 @@ impl DebugCommand for ContinueCommand {
 
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
         debugger.cont()
+    }
+}
+
+impl DebugCommand for StepOverCommand {
+    fn name(&self) -> &'static str {
+        "over"
+    }
+
+    fn aliases(&self) -> &[&'static str] {
+        &["o"]
+    }
+
+    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+        debugger.step_over()
     }
 }
