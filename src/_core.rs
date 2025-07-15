@@ -122,10 +122,6 @@ impl Debugger {
     }
 
 
-    pub fn get_address_value(&self, addr_str: &str) -> Result<i64> {
-        let addr = self.parse_address(addr_str)?;
-        Ok(ptrace::read(self.process.pid, addr as ptrace::AddressType)?)
-    }
 
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions
@@ -134,9 +130,6 @@ impl Debugger {
             .map(|f| f.name.clone())
     }
 
-    pub fn get_registers(&self) -> Result<user_regs_struct> {
-        Ok(getregs(self.process.pid)?)
-    }
 
     pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
         let addr = if let Ok(addr) = self.parse_address(input) {
@@ -164,49 +157,7 @@ impl Debugger {
         self.breakpoint.remove_breakpoint(addr, self.process.pid)
     }
 
-    pub fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()> {
-        let addr = self.parse_address(addr_str)?;
-        let mut buf = vec![0u8; size];
-        read_process_memory(self.process.pid, addr as usize, &mut buf)?;
 
-        for (i, chunk) in buf.chunks(16).enumerate() {
-            print!("0x{:08X}: ", addr as usize + i * 16);
-
-            for byte in chunk {
-                print!("{:02X} ", byte);
-            }
-            for _ in 0..(16 - chunk.len()) {
-                print!("   ");
-            }
-            print!("|");
-
-            for byte in chunk {
-                let c = *byte as char;
-                if c.is_ascii_graphic() || c == ' ' {
-                    print!("{}", c);
-                } else {
-                    print!(".");
-                }
-            }
-            println!("|");
-        }
-        Ok(())
-    }
-
-    pub fn patch(&self, addr_str: &str, value_str: &str) -> Result<()> {
-        let addr = self.parse_address(addr_str)?;
-        let value = self.parse_address(value_str)?;
-
-        ptrace::write(self.process.pid, addr as ptrace::AddressType, value as i64)?;
-        Ok(())
-    }
-
-
-    pub fn cont(&mut self) -> Result<()> {
-        nix::sys::ptrace::cont(self.process.pid, None)?;
-        self.state = DebuggerState::AwaitingTrap;
-        Ok(())
-    }
 
     pub fn print_sections(&self) -> Result<()> {
         let data = fs::read(self.path.clone()).unwrap();

@@ -3,11 +3,18 @@ use anyhow::Result;
 use nix::sys::ptrace;
 
 pub trait Stepping {
+    fn cont(&mut self) -> Result<()>;
     fn single_step(&mut self) -> Result<()>;
     fn step_over(&mut self) -> Result<()>;
 }
 
 impl Stepping for Debugger {
+    fn cont(&mut self) -> Result<()> {
+        nix::sys::ptrace::cont(self.process.pid, None)?;
+        self.state = DebuggerState::AwaitingTrap;
+        Ok(())
+    }
+
     fn single_step(&mut self) -> Result<()> {
         nix::sys::ptrace::step(self.process.pid, None)?;
         Ok(())
@@ -39,7 +46,7 @@ impl Stepping for Debugger {
             let next_addr = rip + next_inst.len() as u64;
             self.breakpoint
                 .set_breakpoint(next_addr, self.process.pid)?;
-           self.cont()?;
+            self.cont()?;
         } else {
             ptrace::step(self.process.pid, None)?;
         }

@@ -1,9 +1,15 @@
+use libc::user_regs_struct;
+
 pub trait Registers {
+    fn get_registers(&self) -> Result<user_regs_struct>;
     fn set_register(&self, reg: &str, value_str: &str) -> Result<()>;
     fn get_register_value(&self, name: &str) -> Result<u64>;
 }
 
 impl Registers for Debugger {
+  fn get_registers(&self) -> Result<user_regs_struct> {
+        Ok(getregs(self.process.pid)?)
+    }
     fn set_register(&self, reg: &str, value_str: &str) -> Result<()> {
         let value = self.parse_address(value_str)?;
 
