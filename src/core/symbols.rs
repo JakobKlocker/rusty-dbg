@@ -1,15 +1,11 @@
+use crate::core::Debugger;
 use anyhow::Result;
-use gimli::BaseAddresses;
-use gimli::EhFrame;
-use gimli::RunTimeEndian;
-use gimli::UnwindContext;
-use gimli::UnwindSection;
+use gimli::{BaseAddresses, EhFrame, RunTimeEndian, UnwindContext, UnwindSection};
 use goblin::Object as GoblinObject;
 use log::{debug, info};
 use memmap2::Mmap;
-use object::{Object, ObjectSection}; 
-use std::path::PathBuf;
-use std::{borrow, error, fs};
+use object::{Object, ObjectSection};
+use std::{borrow, error, fs, path::PathBuf};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -221,4 +217,24 @@ pub fn get_unwind_info(path: &str, target_addr: u64) -> Result<UnwindRowInfo> {
     }
     return Err(anyhow::anyhow!("No FDE found for address 0x{:x}", target_addr).into());
     //need better way to detect end of backtrace
+}
+
+pub trait Symbols {
+    fn print_sections(&self) -> Result<()>;
+}
+
+impl Symbols for Debugger {
+    fn print_sections(&self) -> Result<()> {
+        let data = fs::read(&self.path)?;
+        let obj_file = object::File::parse(&*data)?;
+        for section in obj_file.sections() {
+            println!(
+                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
+                section.name().unwrap_or("<unnamed>"),
+                section.address(),
+                section.size(),
+            );
+        }
+        Ok(())
+    }
 }

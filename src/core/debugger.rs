@@ -1,11 +1,9 @@
 use crate::core::breakpoint::*;
-use crate::core::symbols::*;
 use crate::core::process::*;
-use anyhow::{bail, Result};
+use crate::core::symbols::*;
+use anyhow::Result;
 use log::{debug, info};
 use nix::sys::ptrace::getregs;
-use object::{Object, ObjectSection};
-use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -13,6 +11,7 @@ use std::process::Command;
 pub enum DebuggerState {
     Interactive,
     AwaitingTrap,
+    Exit,
 }
 
 #[derive(Debug)]
@@ -39,8 +38,6 @@ impl Debugger {
         }
     }
 
-
-
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
     }
@@ -60,8 +57,6 @@ impl Debugger {
         std::process::exit(0);
     }
 
-
-
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions
             .iter()
@@ -69,55 +64,10 @@ impl Debugger {
             .map(|f| f.name.clone())
     }
 
-
-    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
-        let addr = if let Ok(addr) = self.parse_address(input) {
-            addr
-        } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
-            debug!(
-                "Found function, setting bp on {}, addr: {:#x}",
-                input, function.offset
-            );
-            function.offset + self.process.base_addr
-        } else {
-            bail!("Invalid breakpoint input: {}", input);
-        };
-        self.breakpoint.set_breakpoint(addr, self.process.pid)?;
-        Ok(addr)
-    }
-
-    pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
-        let addr = if let Ok(addr) = self.parse_address(input) {
-            addr
-        } else {
-            bail!("Invalid rm breakpoint input: {}", input);
-        };
-
-        self.breakpoint.remove_breakpoint(addr, self.process.pid)
-    }
-
-
-
-    pub fn print_sections(&self) -> Result<()> {
-        let data = fs::read(self.path.clone()).unwrap();
-        let obj_file = object::File::parse(&*data)?;
-        for section in obj_file.sections() {
-            println!(
-                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
-                section.name().unwrap_or("<unnamed>"),
-                section.address(),
-                section.size(),
-            );
-        }
-        Ok(())
-    }
-
     #[allow(dead_code)]
     fn print_file_and_line(&self) {
         let regs = getregs(self.process.pid).unwrap();
-
         let rip = regs.rip;
-
         self.dwarf.get_line_and_file(rip - self.process.base_addr);
     }
 

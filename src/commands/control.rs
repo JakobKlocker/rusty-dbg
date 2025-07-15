@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::stepping::Stepping;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::stepping::Stepping;
 
 #[derive(Clone)]
 pub struct SingleStepCommand;
@@ -28,7 +28,7 @@ impl DebugCommand for SingleStepCommand {
 
 impl DebugCommand for ContinueCommand {
     fn name(&self) -> &'static str {
-        "continue"
+        "cont"
     }
 
     fn aliases(&self) -> &[&'static str] {
@@ -42,11 +42,11 @@ impl DebugCommand for ContinueCommand {
 
 impl DebugCommand for StepOverCommand {
     fn name(&self) -> &'static str {
-        "over"
+        "next"
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["o"]
+        &["n"]
     }
 
     fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {

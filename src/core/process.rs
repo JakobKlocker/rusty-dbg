@@ -1,9 +1,9 @@
 use crate::core::map::Map;
+use log::{debug, info};
 use nix::sys::ptrace;
 use nix::unistd::Pid;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
-use log::{debug, info};
 
 #[derive(Debug)]
 pub struct Process {

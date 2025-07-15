@@ -1,20 +1,15 @@
+pub mod backtrace;
 pub mod breakpoint;
 pub mod command_trait;
-pub mod dump_hex;
-pub mod patch;
 pub mod control;
 pub mod disassemble;
-pub mod sections;
-pub mod offset;
+pub mod dump_hex;
 pub mod exit;
-pub mod backtrace;
+pub mod offset;
+pub mod patch;
 pub mod registers;
+pub mod sections;
 
-pub use breakpoint::BreakpointCommand;
-pub use breakpoint::RemoveBreakpointCommand;
-pub use command_trait::DebugCommand;
-pub use dump_hex::DumpHexCommand;
-pub use control::SingleStepCommand;
 use crate::commands::backtrace::BacktraceCommand;
 use crate::commands::breakpoint::ShowBreakpointsCommand;
 use crate::commands::control::ContinueCommand;
@@ -22,12 +17,17 @@ use crate::commands::control::StepOverCommand;
 use crate::commands::disassemble::DisassembleCommand;
 use crate::commands::exit::ExitCommand;
 use crate::commands::offset::OffsetCommand;
+use crate::commands::patch::PatchCommand;
 use crate::commands::registers::GetAllRegistersCommand;
 use crate::commands::registers::GetRegisterCommand;
 use crate::commands::registers::SetRegisterCommand;
 use crate::commands::sections::SectionsCommand;
 use crate::core::Debugger;
-
+pub use breakpoint::BreakpointCommand;
+pub use breakpoint::RemoveBreakpointCommand;
+pub use command_trait::DebugCommand;
+pub use control::SingleStepCommand;
+pub use dump_hex::DumpHexCommand;
 
 use std::collections::HashMap;
 
@@ -56,7 +56,8 @@ impl CommandRouter {
             Box::new(BacktraceCommand),
             Box::new(SetRegisterCommand),
             Box::new(GetRegisterCommand),
-            Box::new(GetAllRegistersCommand)
+            Box::new(GetAllRegistersCommand),
+            Box::new(PatchCommand)
         ];
 
         for cmd in all_commands {

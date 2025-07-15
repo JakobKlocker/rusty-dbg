@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::backtrace::Backtrace;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::backtrace::Backtrace;
 
 #[derive(Clone)]
 pub struct BacktraceCommand;

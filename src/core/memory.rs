@@ -1,7 +1,7 @@
 use crate::core::Debugger;
 use anyhow::Result;
-use nix::sys::ptrace;
 use libc::{iovec, pid_t, process_vm_readv};
+use nix::sys::ptrace;
 use nix::unistd::Pid;
 use std::io::Error;
 

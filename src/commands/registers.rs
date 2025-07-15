@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::registers::Registers;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::registers::Registers;
 
 #[derive(Clone)]
 pub struct SetRegisterCommand;
@@ -18,7 +18,7 @@ impl DebugCommand for SetRegisterCommand {
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["set"]
+        &["set", "sr"]
     }
 
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
@@ -40,7 +40,7 @@ impl DebugCommand for GetRegisterCommand {
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["get"]
+        &["get", "gr"]
     }
 
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
