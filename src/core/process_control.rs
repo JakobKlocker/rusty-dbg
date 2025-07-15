@@ -1,7 +1,7 @@
 use crate::core::*;
 use log::info;
-use nix::sys::wait::{waitpid, WaitStatus};
 use nix::sys::ptrace::*;
+use nix::sys::wait::{waitpid, WaitStatus};
 
 pub trait ProcessControl {
     fn resume_and_wait(&mut self);

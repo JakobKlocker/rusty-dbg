@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::stepping::Stepping;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::stepping::Stepping;
 
 #[derive(Clone)]
 pub struct SingleStepCommand;

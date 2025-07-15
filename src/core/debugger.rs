@@ -1,6 +1,6 @@
 use crate::core::breakpoint::*;
-use crate::core::symbols::*;
 use crate::core::process::*;
+use crate::core::symbols::*;
 use anyhow::{bail, Result};
 use log::{debug, info};
 use nix::sys::ptrace::getregs;
@@ -39,8 +39,6 @@ impl Debugger {
         }
     }
 
-
-
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
     }
@@ -60,15 +58,12 @@ impl Debugger {
         std::process::exit(0);
     }
 
-
-
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions
             .iter()
             .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
             .map(|f| f.name.clone())
     }
-
 
     pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
         let addr = if let Ok(addr) = self.parse_address(input) {
@@ -95,8 +90,6 @@ impl Debugger {
 
         self.breakpoint.remove_breakpoint(addr, self.process.pid)
     }
-
-
 
     pub fn print_sections(&self) -> Result<()> {
         let data = fs::read(self.path.clone()).unwrap();

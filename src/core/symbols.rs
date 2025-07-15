@@ -7,7 +7,7 @@ use gimli::UnwindSection;
 use goblin::Object as GoblinObject;
 use log::{debug, info};
 use memmap2::Mmap;
-use object::{Object, ObjectSection}; 
+use object::{Object, ObjectSection};
 use std::path::PathBuf;
 use std::{borrow, error, fs};
 

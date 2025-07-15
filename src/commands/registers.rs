@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::registers::Registers;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::registers::Registers;
 
 #[derive(Clone)]
 pub struct SetRegisterCommand;

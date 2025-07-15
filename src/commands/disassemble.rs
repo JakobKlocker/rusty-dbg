@@ -1,7 +1,7 @@
 use crate::commands::DebugCommand;
+use crate::core::disassembler::Disassembler;
 use crate::core::Debugger;
 use anyhow::Result;
-use crate::core::disassembler::Disassembler;
 
 #[derive(Clone)]
 pub struct DisassembleCommand;
@@ -16,6 +16,6 @@ impl DebugCommand for DisassembleCommand {
     }
 
     fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
-       debugger.disassemble()
+        debugger.disassemble()
     }
 }
