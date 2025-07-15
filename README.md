@@ -49,10 +49,17 @@ sudo cargo run -- <pid|binary>
 
 ---
 
-## Disclaimer
+## Limitations
 
-This is a learning project. It is not a production-grade debugger and does not yet support:
+This is a **work-in-progress** learning project and lacks many advanced features:
 
-- Thread debugging
-- Signal handling beyond traps
-- Breakpoint management across shared libraries
+- No thread support
+- Minimal signal handling
+- No shared library breakpoint persistence
+- Only works on **x86_64 Linux** ELF binaries
+
+---
+
+## Feedback Welcome
+
+**If you have ideas or critiques, especially around architecture or organization I'd love to hear your feedback.**
