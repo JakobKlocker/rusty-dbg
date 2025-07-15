@@ -11,6 +11,8 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
+use std::fs;
+use object::{Object, ObjectSection};
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
@@ -267,6 +269,20 @@ impl Debugger {
             );
             self.dwarf
                 .get_line_and_file(i.address() - self.process.base_addr);
+        }
+        Ok(())
+    }
+
+    pub fn print_sections(&self) -> Result<()> {
+        let data = fs::read(self.path.clone()).unwrap();
+        let obj_file = object::File::parse(&*data)?;
+        for section in obj_file.sections() {
+            println!(
+                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
+                section.name().unwrap_or("<unnamed>"),
+                section.address(),
+                section.size(),
+            );
         }
         Ok(())
     }

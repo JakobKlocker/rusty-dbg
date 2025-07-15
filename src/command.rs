@@ -71,9 +71,6 @@ impl<'a> CommandHandler<'a> {
                     _ => println!("Usage: set <register> <value>"),
                 }
             }
-           Some("sections") => {
-                self.print_sections();
-            }
             Some("read") => {
                 if let Some(addr) = parts.next() {
                     let addr = if addr.starts_with("0x") {
@@ -109,19 +106,6 @@ impl<'a> CommandHandler<'a> {
             }
             Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
-        }
-    }
-
-    fn print_sections(&self) {
-        let data = fs::read(self.debugger.path.clone()).unwrap();
-        let obj_file = object::File::parse(&*data).unwrap();
-        for section in obj_file.sections() {
-            println!(
-                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
-                section.name().unwrap_or("<unnamed>"),
-                section.address(),
-                section.size(),
-            );
         }
     }
 
