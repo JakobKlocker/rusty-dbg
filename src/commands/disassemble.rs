@@ -12,7 +12,7 @@ impl DebugCommand for DisassembleCommand {
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["dis"]
+        &["disas"]
     }
 
     fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {

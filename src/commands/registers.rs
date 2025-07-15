@@ -18,7 +18,7 @@ impl DebugCommand for SetRegisterCommand {
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["set"]
+        &["set", "sr"]
     }
 
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
@@ -40,7 +40,7 @@ impl DebugCommand for GetRegisterCommand {
     }
 
     fn aliases(&self) -> &[&'static str] {
-        &["get"]
+        &["get", "gr"]
     }
 
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {

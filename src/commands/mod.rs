@@ -17,6 +17,7 @@ use crate::commands::control::StepOverCommand;
 use crate::commands::disassemble::DisassembleCommand;
 use crate::commands::exit::ExitCommand;
 use crate::commands::offset::OffsetCommand;
+use crate::commands::patch::PatchCommand;
 use crate::commands::registers::GetAllRegistersCommand;
 use crate::commands::registers::GetRegisterCommand;
 use crate::commands::registers::SetRegisterCommand;
@@ -56,6 +57,7 @@ impl CommandRouter {
             Box::new(SetRegisterCommand),
             Box::new(GetRegisterCommand),
             Box::new(GetAllRegistersCommand),
+            Box::new(PatchCommand)
         ];
 
         for cmd in all_commands {
