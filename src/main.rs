@@ -13,7 +13,6 @@ fn main() {
         println!("Usage: {} <pid|path>", args[0]);
         return;
     }
-
     let debuger_process_name: &_ = &args[0].rsplit('/').next().unwrap_or("unknown");
     let debugee_pid_path: &_ = &args[1];
 
