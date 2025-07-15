@@ -1,4 +1,5 @@
 use crate::commands::DebugCommand;
+use crate::core::breakpoint_helpers::*;
 use crate::core::Debugger;
 use anyhow::Result;
 #[derive(Clone)]

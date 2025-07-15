@@ -9,5 +9,6 @@ pub mod process_control;
 pub mod registers;
 pub mod stepping;
 pub mod symbols;
+pub mod breakpoint_helpers;
 
 pub use debugger::*;

@@ -16,6 +16,12 @@ impl ProcessControl for Debugger {
                 println!("Process exited with status: {}", exit_status);
             }
             Ok(WaitStatus::Stopped(_, signal)) => {
+                //temp for now, thats why sigtrap check below stays
+                if signal != nix::sys::signal::Signal::SIGTRAP {
+                    nix::sys::ptrace::cont(self.process.pid, None)
+                        .expect("Failed to continue process");
+                    return;
+                }
                 let regs = getregs(self.process.pid).unwrap();
                 if let Some(function_name) =
                     self.get_function_name(regs.rip - self.process.base_addr)
@@ -34,12 +40,6 @@ impl ProcessControl for Debugger {
                     )
                 }
 
-                if signal != nix::sys::signal::Signal::SIGTRAP {
-                    //temp for now, thats why sigtrap check below stays
-                    nix::sys::ptrace::cont(self.process.pid, None)
-                        .expect("Failed to continue process");
-                    return;
-                }
                 if signal == nix::sys::signal::Signal::SIGTRAP {
                     self.handle_sigtrap();
                 }
@@ -53,6 +53,7 @@ impl ProcessControl for Debugger {
             }
             Err(e) => {
                 println!("Error waiting for process: {}", e);
+                self.state = DebuggerState::Exit;
             }
         }
     }

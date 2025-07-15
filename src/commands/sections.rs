@@ -1,5 +1,6 @@
 use crate::commands::DebugCommand;
 use crate::core::Debugger;
+ use crate::core::symbols::Symbols;
 use anyhow::Result;
 #[derive(Clone)]
 pub struct SectionsCommand;

@@ -29,8 +29,10 @@ impl<'a> Repl<'a> {
                     }
                     Err(err) => {
                         eprintln!("Unexpected error: {:?}", err);
+                        self.debugger.state = DebuggerState::Exit;
                     }
                 },
+                DebuggerState::Exit => break
             }
             info!("state: {:?}", self.debugger.state);
         }
