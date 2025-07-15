@@ -201,6 +201,35 @@ impl Debugger {
         }
         Ok(())
     }
+    
+    pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()>{
+        let value = self.parse_address(value_str)?;
+        
+        let mut regs = ptrace::getregs(self.process.pid)?;
+        match reg {
+            "rip" => regs.rip = value,
+            "rax" => regs.rax = value,
+            "rbx" => regs.rbx = value,
+            "rcx" => regs.rcx = value,
+            "rdx" => regs.rdx = value,
+            "rsi" => regs.rsi = value,
+            "rdi" => regs.rdi = value,
+            "rsp" => regs.rsp = value,
+            "rbp" => regs.rbp = value,
+            "r8" => regs.r8 = value,
+            "r9" => regs.r9 = value,
+            "r10" => regs.r10 = value,
+            "r11" => regs.r11 = value,
+            "r12" => regs.r12 = value,
+            "r13" => regs.r13 = value,
+            "r14" => regs.r14 = value,
+            "r15" => regs.r15 = value,
+            "eflags" => regs.eflags = value,
+            _ => bail!("Unknown register: {}", reg),
+        }
+        ptrace::setregs(self.process.pid, regs)?;
+        Ok(())
+    }
 
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions

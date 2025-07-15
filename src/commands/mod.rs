@@ -8,6 +8,7 @@ pub mod sections;
 pub mod offset;
 pub mod exit;
 pub mod backtrace;
+pub mod registers;
 
 pub use breakpoint::BreakpointCommand;
 pub use breakpoint::RemoveBreakpointCommand;
@@ -21,6 +22,7 @@ use crate::commands::control::StepOverCommand;
 use crate::commands::disassemble::DisassembleCommand;
 use crate::commands::exit::ExitCommand;
 use crate::commands::offset::OffsetCommand;
+use crate::commands::registers::SetRegisterCommand;
 use crate::commands::sections::SectionsCommand;
 use crate::core::Debugger;
 
@@ -49,7 +51,8 @@ impl CommandRouter {
             Box::new(OffsetCommand),
             Box::new(ShowBreakpointsCommand),
             Box::new(ExitCommand),
-            Box::new(BacktraceCommand)
+            Box::new(BacktraceCommand),
+            Box::new(SetRegisterCommand)
         ];
 
         for cmd in all_commands {

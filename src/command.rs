@@ -46,31 +46,6 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("set") | Some("change") => {
-                let reg = parts.next();
-                let val = parts.next();
-                match (reg, val) {
-                    (Some(reg), Some(val_str)) => {
-                        let value = if val_str.starts_with("0x") {
-                            u64::from_str_radix(&val_str[2..], 16)
-                        } else {
-                            u64::from_str_radix(val_str, 10)
-                        };
-
-                        match value {
-                            Ok(val) => {
-                                if let Err(e) = self.set_register(reg, val) {
-                                    println!("Failed to set register {}: {}", reg, e);
-                                } else {
-                                    println!("Set register {} to 0x{:x}", reg, val);
-                                }
-                            }
-                            Err(e) => println!("Invalid value: {}", e),
-                        }
-                    }
-                    _ => println!("Usage: set <register> <value>"),
-                }
-            }
             Some("read") => {
                 if let Some(addr) = parts.next() {
                     let addr = if addr.starts_with("0x") {
@@ -175,31 +150,4 @@ impl<'a> CommandHandler<'a> {
         value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
     }
 
-    fn set_register(&self, name: &str, value: u64) -> Result<()> {
-        let mut regs = ptrace::getregs(self.debugger.process.pid)?;
-        match name {
-            "rip" => regs.rip = value,
-            "rax" => regs.rax = value,
-            "rbx" => regs.rbx = value,
-            "rcx" => regs.rcx = value,
-            "rdx" => regs.rdx = value,
-            "rsi" => regs.rsi = value,
-            "rdi" => regs.rdi = value,
-            "rsp" => regs.rsp = value,
-            "rbp" => regs.rbp = value,
-            "r8" => regs.r8 = value,
-            "r9" => regs.r9 = value,
-            "r10" => regs.r10 = value,
-            "r11" => regs.r11 = value,
-            "r12" => regs.r12 = value,
-            "r13" => regs.r13 = value,
-            "r14" => regs.r14 = value,
-            "r15" => regs.r15 = value,
-            "eflags" => regs.eflags = value,
-            _ => bail!("Unknown register: {}", name),
-        }
-
-        ptrace::setregs(self.debugger.process.pid, regs)?;
-        Ok(())
-    }
 }
