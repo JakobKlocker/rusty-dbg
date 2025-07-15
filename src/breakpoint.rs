@@ -1,6 +1,7 @@
+use anyhow::Result;
+use log::debug;
 use nix::libc;
 use nix::{sys::ptrace, unistd::Pid};
-use log::{debug};
 
 #[derive(Debug)]
 pub struct Breakpoint {
@@ -14,12 +15,11 @@ impl Breakpoint {
         }
     }
 
-    pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) {
+    pub fn set_breakpoint(&mut self, addr: u64, pid: Pid) -> Result<()> {
         let aligned_addr = addr & !0x7;
         let byte_offset = addr % 8;
 
-        let original_word = ptrace::read(pid, aligned_addr as *mut libc::c_void)
-            .expect("Failed to read memory") as u64;
+        let original_word = ptrace::read(pid, aligned_addr as *mut libc::c_void)? as u64;
 
         let original_byte = ((original_word >> (byte_offset * 8)) & 0xFF) as u8;
 
@@ -34,22 +34,20 @@ impl Breakpoint {
 
         debug!("[SET BP] Patched word:    {:#018x}", patched_word);
 
-        ptrace::write(pid, aligned_addr as *mut libc::c_void, patched_word as i64)
-            .expect("Failed to write patched word");
+        ptrace::write(pid, aligned_addr as *mut libc::c_void, patched_word as i64)?;
 
         self.breakpoint.push((addr, original_byte));
         debug!("[SET BP] Breakpoint set.\n");
-        println!("breakpoint set on 0x{:x}", addr);
+        Ok(())
     }
 
-    pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> bool {
+    pub fn remove_breakpoint(&mut self, addr: u64, pid: Pid) -> Result<()> {
         if let Some(pos) = self.breakpoint.iter().position(|(a, _)| *a == addr) {
             let (_, saved_byte) = self.breakpoint[pos];
             let aligned_addr = addr & !0x7;
             let byte_offset = addr % 8;
 
-            let current_word = ptrace::read(pid, aligned_addr as *mut libc::c_void)
-                .expect("Failed to read memory") as u64;
+            let current_word = ptrace::read(pid, aligned_addr as *mut libc::c_void)? as u64;
 
             debug!("[REMOVE BP] Target addr:     {:#x}", addr);
             debug!("[REMOVE BP] Aligned addr:    {:#x}", aligned_addr);
@@ -62,16 +60,13 @@ impl Breakpoint {
 
             debug!("[REMOVE BP] Restored word:   {:#018x}", restored_word);
 
-            ptrace::write(pid, aligned_addr as *mut libc::c_void, restored_word as i64)
-                .expect("Failed to write restored word");
+            ptrace::write(pid, aligned_addr as *mut libc::c_void, restored_word as i64)?;
 
             self.breakpoint.remove(pos);
-            println!("breakpoint removed at 0x{:x}", addr);
-            true
         } else {
             println!("No breakpoint found at {:#x}", addr);
-            false
         }
+        Ok(())
     }
 
     pub fn is_breakpoint(&self, addr: u64) -> bool {

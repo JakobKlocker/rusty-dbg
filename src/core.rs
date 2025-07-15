@@ -2,15 +2,18 @@ use crate::breakpoint::*;
 use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
+use anyhow::{bail, Result};
 use log::{debug, info};
+use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use anyhow::{Result, bail};
+use capstone::prelude::*;
 
 use crate::command::CommandHandler;
+use crate::memory::read_process_memory;
 
 #[derive(Debug, Clone)]
 pub enum DebuggerState {
@@ -129,7 +132,7 @@ impl Debugger {
             .map(|f| f.name.clone())
     }
 
-    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
+    pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {
         let addr = if let Ok(addr) = self.parse_address(input) {
             addr
         } else if let Some(function) = self.functions.iter().find(|f| f.name == input) {
@@ -141,10 +144,8 @@ impl Debugger {
         } else {
             bail!("Invalid breakpoint input: {}", input);
         };
-
-        println!("above set_bp");
         self.breakpoint.set_breakpoint(addr, self.process.pid);
-        Ok(())
+        Ok(addr)
     }
 
     pub fn rm_breakpoint_by_input(&mut self, input: &str) -> Result<()> {
@@ -154,14 +155,102 @@ impl Debugger {
             bail!("Invalid rm breakpoint input: {}", input);
         };
 
-        self.breakpoint.remove_breakpoint(addr, self.process.pid);
+        self.breakpoint.remove_breakpoint(addr, self.process.pid)
+    }
+
+    pub fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()> {
+        let addr = self.parse_address(addr_str)?;
+        let mut buf = vec![0u8; size];
+        read_process_memory(self.process.pid, addr as usize, &mut buf)?;
+
+        for (i, chunk) in buf.chunks(16).enumerate() {
+            print!("0x{:08X}: ", addr as usize + i * 16);
+
+            for byte in chunk {
+                print!("{:02X} ", byte);
+            }
+            for _ in 0..(16 - chunk.len()) {
+                print!("   ");
+            }
+            print!("|");
+
+            for byte in chunk {
+                let c = *byte as char;
+                if c.is_ascii_graphic() || c == ' ' {
+                    print!("{}", c);
+                } else {
+                    print!(".");
+                }
+            }
+            println!("|");
+        }
+        Ok(())
+    }
+
+    pub fn patch(&self, addr_str: &str, value_str: &str) -> Result<()> {
+        let addr = self.parse_address(addr_str)?;
+        let value = self.parse_address(value_str)?;
+
+        ptrace::write(self.process.pid, addr as ptrace::AddressType, value as i64)?;
+        Ok(())
+    }
+
+    pub fn single_step(&mut self) -> Result<()> {
+        nix::sys::ptrace::step(self.process.pid, None)?;
+        Ok(())
+    }
+
+    pub fn cont(&mut self) -> Result<()> {
+        nix::sys::ptrace::cont(self.process.pid, None)?;
+        self.state = DebuggerState::AwaitingTrap;
+        Ok(())
+    }
+
+    pub fn step_over(&mut self) -> Result<()>{
+        let cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Intel)
+            .detail(true)
+            .build()
+            .expect("Failed to create Capstone object");
+
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        let num_bytes = 10;
+        let mut code = vec![0u8; num_bytes];
+
+        match read_process_memory(self.process.pid, rip as usize, &mut code) {
+            Ok(_) => {}
+            Err(e) => println!("read process memory failed with error {}", e),
+        }
+        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
+        let next_inst = insns.iter().next().unwrap();
+        if next_inst.mnemonic() == Some("call") {
+            let next_addr = rip + next_inst.len() as u64;
+            self
+                .breakpoint
+                .set_breakpoint(next_addr, self.process.pid);
+            self.cont();
+        } else {
+            ptrace::step(self.process.pid, None)?;
+        }
         Ok(())
     }
 
 
     fn parse_address(&self, input: &str) -> Result<u64> {
-        let trimmed = input.trim_start_matches("0x");
-        u64::from_str_radix(trimmed, 16).map_err(|e| anyhow::anyhow!(e))
+        let trimmed = input.trim();
+
+        if let Some(stripped) = trimmed.strip_prefix("0x") {
+            u64::from_str_radix(stripped, 16)
+                .map_err(|e| anyhow::anyhow!("invalid hex address: {}", e))
+        } else {
+            u64::from_str_radix(trimmed, 10)
+                .map_err(|e| anyhow::anyhow!("invalid dec address: {}", e))
+        }
     }
 }
 

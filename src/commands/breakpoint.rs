@@ -18,24 +18,28 @@ impl DebugCommand for BreakpointCommand {
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
         let arg = args
             .get(0)
-            .ok_or_else(|| anyhow::anyhow!("Missing address"))?;
-        debugger.set_breakpoint_by_input(arg)
+            .ok_or_else(|| anyhow::anyhow!("Usage: bp <address>"))?;
+        let bp_addr = debugger.set_breakpoint_by_input(arg)?;
+        println!("breakpoint set at 0x{:x}", bp_addr);
+        Ok(())
     }
 }
 
-impl DebugCommand for RemoveBreakpointCommand{
-    fn name(&self) -> &'static str{
+impl DebugCommand for RemoveBreakpointCommand {
+    fn name(&self) -> &'static str {
         "rm-bp"
     }
-    
+
     fn aliases(&self) -> &[&'static str] {
         &["rmb"]
     }
-    
+
     fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
-        let arg = args
+        let addr_str = args
             .get(0)
-            .ok_or_else(|| anyhow::anyhow!("Missing address"))?;
-        debugger.rm_breakpoint_by_input(arg)
+            .ok_or_else(|| anyhow::anyhow!("Usage: rmb <address>"))?;
+        debugger.rm_breakpoint_by_input(addr_str)?;
+        println!("breakpoint removed at {}", addr_str);
+        Ok(())
     }
 }

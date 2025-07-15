@@ -46,84 +46,6 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("bp") | Some("b") => {
-                if let Some(arg) = parts.next() {
-                    let arg = if arg.starts_with("0x") {
-                        &arg[2..]
-                    } else {
-                        arg
-                    };
-                    match u64::from_str_radix(arg, 16) {
-                        Ok(breakpoint_addr) => {
-                            println!("{:#x}", breakpoint_addr);
-                            self.debugger
-                                .breakpoint
-                                .set_breakpoint(breakpoint_addr, self.debugger.process.pid);
-                        }
-                        Err(_) => {
-                            if let Some(function) = self
-                                .debugger
-                                .functions
-                                .iter()
-                                .find(|function| function.name == arg)
-                            {
-                                debug!(
-                                    "Found function, setting bp on {}, addr: {:#x}",
-                                    arg, function.offset
-                                );
-                                self.debugger.breakpoint.set_breakpoint(
-                                    function.offset + self.debugger.process.base_addr,
-                                    self.debugger.process.pid,
-                                );
-                            } else {
-                                println!(
-                                    "Breakpoint failed, has to be addr or function name: {}",
-                                    arg
-                                );
-                            }
-                        }
-                    }
-                } else {
-                    println!("No second argument provided for breakpoint");
-                }
-            }
-            Some("rm-bp") | Some("rm") => {
-                if let Some(arg) = parts.next() {
-                    let arg = if arg.starts_with("0x") {
-                        &arg[2..]
-                    } else {
-                        arg
-                    };
-                    match u64::from_str_radix(arg, 16) {
-                        Ok(breakpoint_addr) => {
-                            println!("remove {}", breakpoint_addr);
-                            self.debugger
-                                .breakpoint
-                                .remove_breakpoint(breakpoint_addr, self.debugger.process.pid);
-                        }
-                        Err(e) => {
-                            println!("rm breakpoint failed: {}", e);
-                        }
-                    }
-                } else {
-                    println!("No seconda argument provided for rm breakpoint");
-                }
-            }
-            Some("dump") => {
-                let size = parts
-                    .next()
-                    .and_then(|s| usize::from_str_radix(s, 10).ok())
-                    .unwrap_or(64);
-
-                let addr = parts.next().and_then(|s| {
-                    if s.starts_with("0x") {
-                        u64::from_str_radix(&s[2..], 16).ok()
-                    } else {
-                        u64::from_str_radix(s, 10).ok()
-                    }
-                });
-                self.dump_hex(addr, size);
-            }
             Some("set") | Some("change") => {
                 let reg = parts.next();
                 let val = parts.next();
@@ -149,36 +71,7 @@ impl<'a> CommandHandler<'a> {
                     _ => println!("Usage: set <register> <value>"),
                 }
             }
-            Some("write") => {
-                let args: Vec<&str> = parts.collect();
-                if args.len() != 2 {
-                    println!("Usage: write <addr> <value>");
-                    return;
-                }
-
-                let addr = if args[0].starts_with("0x") {
-                    u64::from_str_radix(&args[0][2..], 16)
-                } else {
-                    u64::from_str_radix(args[0], 10)
-                };
-
-                let value = if args[1].starts_with("0x") {
-                    i64::from_str_radix(&args[1][2..], 16)
-                } else {
-                    i64::from_str_radix(args[1], 10)
-                };
-
-                match (addr, value) {
-                    (Ok(addr), Ok(value)) => match self.write(addr, value) {
-                        Ok(()) => println!("writing value: {} to address: {:x}", value, addr),
-                        Err(e) => println!("ptrace write failed with error {}", e),
-                    },
-                    _ => {
-                        println!("Usage: write <addr> <value>");
-                    }
-                }
-            }
-            Some("sections") => {
+           Some("sections") => {
                 self.print_sections();
             }
             Some("read") => {
@@ -199,14 +92,9 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-            Some("step") | Some("s") => {
-                ptrace::step(self.debugger.process.pid, None).expect("Single-step failed")
-            }
-            Some("over") | Some("o") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
             Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
-            Some("continue") | Some("c") => self.cont(),
             Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
                     self.dump_register(reg);
@@ -236,41 +124,6 @@ impl<'a> CommandHandler<'a> {
                 section.address(),
                 section.size(),
             );
-        }
-    }
-
-    fn dump_hex(&self, addr: Option<u64>, size: usize) {
-        let mut buf = vec![0u8; size as usize];
-        let regs = getregs(self.debugger.process.pid).unwrap();
-        let addr_to_read = addr.unwrap_or(regs.rip);
-        match read_process_memory(self.debugger.process.pid, addr_to_read as usize, &mut buf) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("read process memory failed with error {}", e);
-                return;
-            }
-        }
-
-        for (i, chunk) in buf.chunks(16).enumerate() {
-            print!("0x{:08X}: ", addr_to_read as usize + i * 16);
-
-            for byte in chunk {
-                print!("{:02X} ", byte);
-            }
-            for _ in 0..(16 - chunk.len()) {
-                print!("   ");
-            }
-            print!("|");
-
-            for byte in chunk {
-                let c = *byte as char;
-                if c.is_ascii_graphic() || c == ' ' {
-                    print!("{}", c);
-                } else {
-                    print!(".");
-                }
-            }
-            println!("|");
         }
     }
 
@@ -352,39 +205,6 @@ impl<'a> CommandHandler<'a> {
             value,
         )?;
         Ok(())
-    }
-
-    fn step_over(&mut self) {
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("Failed to create Capstone object");
-
-        let regs = getregs(self.debugger.process.pid).unwrap();
-
-        let rip = regs.rip;
-
-        let num_bytes = 10;
-        let mut code = vec![0u8; num_bytes];
-
-        match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
-            Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
-        }
-        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
-        let next_inst = insns.iter().next().unwrap();
-        if next_inst.mnemonic() == Some("call") {
-            let next_addr = rip + next_inst.len() as u64;
-            self.debugger
-                .breakpoint
-                .set_breakpoint(next_addr, self.debugger.process.pid);
-            self.cont();
-        } else {
-            ptrace::step(self.debugger.process.pid, None).expect("Single-step failed");
-        }
     }
 
     fn dissasembl_instructions(&self) {
