@@ -136,6 +136,11 @@ impl Debugger {
     pub fn list_breakpoints(&self) -> &[(u64, u8)]{
         &self.breakpoint.breakpoint
     }
+    
+    pub fn exit(&self) -> Result<()>{
+        println!("Exiting the debugger...");
+        std::process::exit(0);
+    }
 
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions

@@ -89,7 +89,6 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-            Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
             Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
                     self.dump_register(reg);
@@ -103,7 +102,6 @@ impl<'a> CommandHandler<'a> {
                     println!("End of backtrace: {}", e);
                 }
             }
-            Some("exit") => self.exit(),
             _ => println!("command not found {}", command),
         }
     }
@@ -189,10 +187,6 @@ impl<'a> CommandHandler<'a> {
         self.debugger.state = DebuggerState::AwaitingTrap;
     }
 
-    fn exit(&self) {
-        println!("Exiting the debugger...");
-        std::process::exit(0);
-    }
 
     fn dump_register(&self, reg: &str) {
         match self.get_register_value(reg) {
