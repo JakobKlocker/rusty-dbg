@@ -92,8 +92,6 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-            Some("instr") => self.dissasembl_instructions(),
-
             Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
             Some("registers") | Some("r") => {
                 if let Some(reg) = parts.next() {
@@ -205,42 +203,6 @@ impl<'a> CommandHandler<'a> {
             value,
         )?;
         Ok(())
-    }
-
-    fn dissasembl_instructions(&self) {
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("Failed to create Capstone object");
-
-        let regs = getregs(self.debugger.process.pid).unwrap();
-
-        let rip = regs.rip;
-
-        let num_bytes = 64;
-        let mut code = vec![0u8; num_bytes];
-        match read_process_memory(self.debugger.process.pid, rip as usize, &mut code) {
-            Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
-        }
-        debug!("{:?}", code);
-
-        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
-
-        for i in insns.iter() {
-            println!(
-                "0x{:x}: {}\t{}",
-                i.address(),
-                i.mnemonic().unwrap_or(""),
-                i.op_str().unwrap_or("")
-            );
-            self.debugger
-                .dwarf
-                .get_line_and_file(i.address() - self.debugger.process.base_addr);
-        }
     }
 
     fn cont(&mut self) {

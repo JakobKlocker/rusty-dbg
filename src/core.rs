@@ -3,6 +3,7 @@ use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
 use anyhow::{bail, Result};
+use capstone::prelude::*;
 use log::{debug, info};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
@@ -10,7 +11,6 @@ use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use capstone::prelude::*;
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
@@ -206,7 +206,7 @@ impl Debugger {
         Ok(())
     }
 
-    pub fn step_over(&mut self) -> Result<()>{
+    pub fn step_over(&mut self) -> Result<()> {
         let cs = Capstone::new()
             .x86()
             .mode(arch::x86::ArchMode::Mode64)
@@ -230,9 +230,7 @@ impl Debugger {
         let next_inst = insns.iter().next().unwrap();
         if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
-            self
-                .breakpoint
-                .set_breakpoint(next_addr, self.process.pid);
+            self.breakpoint.set_breakpoint(next_addr, self.process.pid);
             self.cont();
         } else {
             ptrace::step(self.process.pid, None)?;
@@ -240,6 +238,38 @@ impl Debugger {
         Ok(())
     }
 
+    pub fn disassemble(&self) -> Result<()>{
+        let cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Intel)
+            .detail(true)
+            .build()
+            .expect("Failed to create Capstone object");
+
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        let num_bytes = 64;
+        let mut code = vec![0u8; num_bytes];
+        read_process_memory(self.process.pid, rip as usize, &mut code)?;
+        debug!("{:?}", code);
+
+        let insns = cs.disasm_all(&code, rip)?;
+
+        for i in insns.iter() {
+            println!(
+                "0x{:x}: {}\t{}",
+                i.address(),
+                i.mnemonic().unwrap_or(""),
+                i.op_str().unwrap_or("")
+            );
+            self.dwarf
+                .get_line_and_file(i.address() - self.process.base_addr);
+        }
+        Ok(())
+    }
 
     fn parse_address(&self, input: &str) -> Result<u64> {
         let trimmed = input.trim();

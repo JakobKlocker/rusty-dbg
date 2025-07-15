@@ -3,6 +3,7 @@ pub mod command_trait;
 pub mod dump_hex;
 pub mod patch;
 pub mod control;
+pub mod disassemble;
 
 pub use breakpoint::BreakpointCommand;
 pub use breakpoint::RemoveBreakpointCommand;
@@ -11,6 +12,7 @@ pub use dump_hex::DumpHexCommand;
 pub use control::SingleStepCommand;
 use crate::commands::control::ContinueCommand;
 use crate::commands::control::StepOverCommand;
+use crate::commands::disassemble::DisassembleCommand;
 use crate::core::Debugger;
 
 
@@ -32,7 +34,8 @@ impl CommandRouter {
             Box::new(DumpHexCommand),
             Box::new(SingleStepCommand),
             Box::new(ContinueCommand),
-            Box::new(StepOverCommand)
+            Box::new(StepOverCommand),
+            Box::new(DisassembleCommand)
         ];
 
         for cmd in all_commands {
