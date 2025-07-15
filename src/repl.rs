@@ -2,6 +2,7 @@ use crate::commands::CommandRouter;
 use crate::core::{Debugger, DebuggerState};
 use log::info;
 use rustyline::{error::ReadlineError, DefaultEditor};
+use crate::core::process_control::ProcessControl;
 
 pub struct Repl<'a> {
     pub debugger: &'a mut Debugger,
@@ -17,7 +18,7 @@ impl<'a> Repl<'a> {
             match state {
                 DebuggerState::AwaitingTrap => self.debugger.resume_and_wait(),
                 DebuggerState::Interactive => {
-                    match rl.readline("dbg> ") {
+                    match rl.readline("rusty-dbg> ") {
                         Ok(line) => {
                             let _ = rl.add_history_entry(&line);
                             let _ = rl.save_history(".history");

@@ -1,15 +1,8 @@
-mod breakpoint;
 mod commands;
 mod core;
-mod dwarf;
-mod functions;
-mod map;
-mod memory;
-mod process;
 mod repl;
-mod stack_unwind;
-use repl::Repl;
 
+use repl::Repl;
 use std::env;
 
 fn main() {

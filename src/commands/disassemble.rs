@@ -1,6 +1,8 @@
 use crate::commands::DebugCommand;
 use crate::core::Debugger;
 use anyhow::Result;
+use crate::core::disassembler::Disassembler;
+
 #[derive(Clone)]
 pub struct DisassembleCommand;
 

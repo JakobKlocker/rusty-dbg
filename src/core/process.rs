@@ -1,4 +1,4 @@
-use crate::map::Map;
+use crate::core::map::Map;
 use nix::sys::ptrace;
 use nix::unistd::Pid;
 use std::fs;
