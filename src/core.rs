@@ -127,6 +127,12 @@ impl Debugger {
         debug!("{:?}", self.functions);
     }
 
+    pub fn print_offset(&self) {
+        let regs = getregs(self.process.pid).unwrap();
+        let func_offset = regs.rip - self.process.base_addr;
+        println!("{}", func_offset);
+    }
+
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions
             .iter()

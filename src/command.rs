@@ -97,7 +97,6 @@ impl<'a> CommandHandler<'a> {
                     self.dump_registers();
                 }
             }
-            Some("offset") => self.print_offset(),
             Some("backtrace") | Some("bt") => {
                 if let Err(e) = self.backtrace() {
                     println!("");
@@ -109,11 +108,6 @@ impl<'a> CommandHandler<'a> {
         }
     }
 
-    fn print_offset(&self) {
-        let regs = getregs(self.debugger.process.pid).unwrap();
-        let func_offset = regs.rip - self.debugger.process.base_addr;
-        println!("{}", func_offset);
-    }
 
     fn backtrace(&self) -> anyhow::Result<()> {
         let regs = getregs(self.debugger.process.pid)?;
