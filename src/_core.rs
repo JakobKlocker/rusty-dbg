@@ -48,66 +48,7 @@ impl Debugger {
         }
     }
 
-    fn handle_sigtrap(&mut self) {
-        // remove BP and replace with org. once hit
-        let mut regs = getregs(self.process.pid).unwrap();
-        let cur_addr = regs.rip - 1;
-        info!("Sigtrap HANDLE Cur Addr: 0x{:x}", cur_addr);
-        if self.breakpoint.is_breakpoint(cur_addr) {
-            self.breakpoint
-                .remove_breakpoint(cur_addr, self.process.pid).unwrap();
-            regs.rip -= 1;
-            let _ = setregs(self.process.pid, regs);
-        }
-    }
 
-    pub fn resume_and_wait(&mut self) {
-        let status = waitpid(self.process.pid, None);
-        match status {
-            Ok(WaitStatus::Exited(_, exit_status)) => {
-                println!("Process exited with status: {}", exit_status);
-            }
-            Ok(WaitStatus::Stopped(_, signal)) => {
-                let regs = getregs(self.process.pid).unwrap();
-                if let Some(function_name) =
-                    self.get_function_name(regs.rip - self.process.base_addr)
-                {
-                    println!(
-                        "Process stopped by signal: {:?} at addr: 0x{:x} ({})",
-                        signal,
-                        regs.rip - 1,
-                        function_name
-                    );
-                } else {
-                    println!(
-                        "Process stopped by signal: {:?} at addr: 0x{:x}",
-                        signal,
-                        regs.rip - 1
-                    )
-                }
-
-                if signal != nix::sys::signal::Signal::SIGTRAP {
-                    //temp for now, thats why sigtrap check below stays
-                    nix::sys::ptrace::cont(self.process.pid, None)
-                        .expect("Failed to continue process");
-                    return;
-                }
-                if signal == nix::sys::signal::Signal::SIGTRAP {
-                    self.handle_sigtrap();
-                }
-                self.state = DebuggerState::Interactive;
-            }
-            Ok(WaitStatus::Signaled(_, signal, _)) => {
-                println!("Process terminated by signal: {:?}", signal);
-            }
-            Ok(_) => {
-                println!("Process changed state.");
-            }
-            Err(e) => {
-                println!("Error waiting for process: {}", e);
-            }
-        }
-    }
 
     pub fn print_functions(&self) {
         debug!("{:?}", self.functions);
@@ -180,61 +121,6 @@ impl Debugger {
         }
     }
 
-    pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()> {
-        let value = self.parse_address(value_str)?;
-
-        let mut regs = ptrace::getregs(self.process.pid)?;
-        match reg {
-            "rip" => regs.rip = value,
-            "rax" => regs.rax = value,
-            "rbx" => regs.rbx = value,
-            "rcx" => regs.rcx = value,
-            "rdx" => regs.rdx = value,
-            "rsi" => regs.rsi = value,
-            "rdi" => regs.rdi = value,
-            "rsp" => regs.rsp = value,
-            "rbp" => regs.rbp = value,
-            "r8" => regs.r8 = value,
-            "r9" => regs.r9 = value,
-            "r10" => regs.r10 = value,
-            "r11" => regs.r11 = value,
-            "r12" => regs.r12 = value,
-            "r13" => regs.r13 = value,
-            "r14" => regs.r14 = value,
-            "r15" => regs.r15 = value,
-            "eflags" => regs.eflags = value,
-            _ => bail!("Unknown register: {}", reg),
-        }
-        ptrace::setregs(self.process.pid, regs)?;
-        Ok(())
-    }
-
-    pub fn get_register_value(&self, name: &str) -> Result<u64> {
-        let regs = getregs(self.process.pid)?;
-        let value = match name {
-            "rip" => Some(regs.rip),
-            "rax" => Some(regs.rax),
-            "rbx" => Some(regs.rbx),
-            "rcx" => Some(regs.rcx),
-            "rdx" => Some(regs.rdx),
-            "rsi" => Some(regs.rsi),
-            "rdi" => Some(regs.rdi),
-            "rsp" => Some(regs.rsp),
-            "rbp" => Some(regs.rbp),
-            "r8" => Some(regs.r8),
-            "r9" => Some(regs.r9),
-            "r10" => Some(regs.r10),
-            "r11" => Some(regs.r11),
-            "r12" => Some(regs.r12),
-            "r13" => Some(regs.r13),
-            "r14" => Some(regs.r14),
-            "r15" => Some(regs.r15),
-            "eflags" => Some(regs.eflags),
-            _ => None,
-        };
-
-        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
-    }
 
     pub fn get_address_value(&self, addr_str: &str) -> Result<i64> {
         let addr = self.parse_address(addr_str)?;
@@ -315,79 +201,10 @@ impl Debugger {
         Ok(())
     }
 
-    pub fn single_step(&mut self) -> Result<()> {
-        nix::sys::ptrace::step(self.process.pid, None)?;
-        Ok(())
-    }
 
     pub fn cont(&mut self) -> Result<()> {
         nix::sys::ptrace::cont(self.process.pid, None)?;
         self.state = DebuggerState::AwaitingTrap;
-        Ok(())
-    }
-
-    pub fn step_over(&mut self) -> Result<()> {
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("Failed to create Capstone object");
-
-        let regs = getregs(self.process.pid).unwrap();
-
-        let rip = regs.rip;
-
-        let num_bytes = 10;
-        let mut code = vec![0u8; num_bytes];
-
-        match read_process_memory(self.process.pid, rip as usize, &mut code) {
-            Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
-        }
-        let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
-        let next_inst = insns.iter().next().unwrap();
-        if next_inst.mnemonic() == Some("call") {
-            let next_addr = rip + next_inst.len() as u64;
-            self.breakpoint.set_breakpoint(next_addr, self.process.pid)?;
-            self.cont()?;
-        } else {
-            ptrace::step(self.process.pid, None)?;
-        }
-        Ok(())
-    }
-
-    pub fn disassemble(&self) -> Result<()> {
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("Failed to create Capstone object");
-
-        let regs = getregs(self.process.pid).unwrap();
-
-        let rip = regs.rip;
-
-        let num_bytes = 64;
-        let mut code = vec![0u8; num_bytes];
-        read_process_memory(self.process.pid, rip as usize, &mut code)?;
-        debug!("{:?}", code);
-
-        let insns = cs.disasm_all(&code, rip)?;
-
-        for i in insns.iter() {
-            println!(
-                "0x{:x}: {}\t{}",
-                i.address(),
-                i.mnemonic().unwrap_or(""),
-                i.op_str().unwrap_or("")
-            );
-            self.dwarf
-                .get_line_and_file(i.address() - self.process.base_addr);
-        }
         Ok(())
     }
 
