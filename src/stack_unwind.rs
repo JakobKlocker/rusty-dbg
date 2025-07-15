@@ -82,5 +82,5 @@ pub fn get_unwind_info(
             }
         }
     }
-    return Err(anyhow::anyhow!("No FDE found for address 0x{:x}", target_addr).into());
+    return Err(anyhow::anyhow!("No FDE found for address 0x{:x}", target_addr).into()); //need better way to detect end of backtrace
 }

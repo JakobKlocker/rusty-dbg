@@ -5,7 +5,7 @@ use nix::{sys::ptrace, unistd::Pid};
 
 #[derive(Debug)]
 pub struct Breakpoint {
-    breakpoint: Vec<(u64, u8)>,
+    pub breakpoint: Vec<(u64, u8)>,
 }
 
 impl Breakpoint {

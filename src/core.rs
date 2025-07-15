@@ -3,17 +3,20 @@ use crate::dwarf::*;
 use crate::functions::*;
 use crate::process::*;
 use anyhow::{bail, Result};
+use capstone::prelude::*;
 use log::{debug, info};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
+use object::{Object, ObjectSection};
+use std::fs;
 use std::path::Path;
 use std::process::Command;
-use capstone::prelude::*;
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
+use crate::stack_unwind::get_unwind_info;
 
 #[derive(Debug, Clone)]
 pub enum DebuggerState {
@@ -125,6 +128,135 @@ impl Debugger {
         debug!("{:?}", self.functions);
     }
 
+    pub fn print_offset(&self) {
+        let regs = getregs(self.process.pid).unwrap();
+        let func_offset = regs.rip - self.process.base_addr;
+        println!("{}", func_offset);
+    }
+
+    pub fn list_breakpoints(&self) -> &[(u64, u8)] {
+        &self.breakpoint.breakpoint
+    }
+
+    pub fn exit(&self) -> Result<()> {
+        println!("Exiting the debugger...");
+        std::process::exit(0);
+    }
+
+    pub fn backtrace(&self) -> anyhow::Result<()> {
+        let regs = getregs(self.process.pid)?;
+        let mut rip = regs.rip;
+        let mut rsp = regs.rsp;
+        let mut rbp = regs.rbp;
+        let mut first = true;
+
+        loop {
+            let mut func_offset = rip - self.process.base_addr;
+
+            let info = get_unwind_info(&self.path, func_offset)?;
+            debug!("{:?}", info);
+
+            let cfa_base = match info.cfa_register {
+                6 => rbp,
+                7 => rsp,
+                16 => rip,
+                other => panic!("unsupported cfa reg{}", other),
+            };
+
+            let cfa = (cfa_base as i64 + info.cfa_offset) as u64;
+            debug!("CFA: 0x{:016x}", cfa);
+
+            let ret_addr_addr = (cfa as i64 + info.ra_offset) as u64;
+
+            let ret_addr = ptrace::read(self.process.pid, ret_addr_addr as ptrace::AddressType)
+                .unwrap() as u64;
+
+            debug!(
+                "Return address (caller RIP): 0x{:016x}",
+                ret_addr - self.process.base_addr
+            );
+
+            func_offset = ret_addr - self.process.base_addr;
+            let name: String = self
+                .get_function_name(func_offset)
+                .unwrap_or_else(|| "_start".to_string());
+            if first != true {
+                print!("-> ");
+            }
+            print!("{}", name);
+            rip = ret_addr;
+            rsp = cfa;
+            if info.cfa_register == 6 {
+                let saved_rbp_addr = (cfa as i64 - 16) as u64;
+                rbp = ptrace::read(self.process.pid, saved_rbp_addr as ptrace::AddressType).unwrap()
+                    as u64;
+            }
+            first = false;
+        }
+        Ok(())
+    }
+
+    pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()> {
+        let value = self.parse_address(value_str)?;
+
+        let mut regs = ptrace::getregs(self.process.pid)?;
+        match reg {
+            "rip" => regs.rip = value,
+            "rax" => regs.rax = value,
+            "rbx" => regs.rbx = value,
+            "rcx" => regs.rcx = value,
+            "rdx" => regs.rdx = value,
+            "rsi" => regs.rsi = value,
+            "rdi" => regs.rdi = value,
+            "rsp" => regs.rsp = value,
+            "rbp" => regs.rbp = value,
+            "r8" => regs.r8 = value,
+            "r9" => regs.r9 = value,
+            "r10" => regs.r10 = value,
+            "r11" => regs.r11 = value,
+            "r12" => regs.r12 = value,
+            "r13" => regs.r13 = value,
+            "r14" => regs.r14 = value,
+            "r15" => regs.r15 = value,
+            "eflags" => regs.eflags = value,
+            _ => bail!("Unknown register: {}", reg),
+        }
+        ptrace::setregs(self.process.pid, regs)?;
+        Ok(())
+    }
+
+    pub fn get_register_value(&self, name: &str) -> Result<u64> {
+        let regs = getregs(self.process.pid)?;
+        let value = match name {
+            "rip" => Some(regs.rip),
+            "rax" => Some(regs.rax),
+            "rbx" => Some(regs.rbx),
+            "rcx" => Some(regs.rcx),
+            "rdx" => Some(regs.rdx),
+            "rsi" => Some(regs.rsi),
+            "rdi" => Some(regs.rdi),
+            "rsp" => Some(regs.rsp),
+            "rbp" => Some(regs.rbp),
+            "r8" => Some(regs.r8),
+            "r9" => Some(regs.r9),
+            "r10" => Some(regs.r10),
+            "r11" => Some(regs.r11),
+            "r12" => Some(regs.r12),
+            "r13" => Some(regs.r13),
+            "r14" => Some(regs.r14),
+            "r15" => Some(regs.r15),
+            "eflags" => Some(regs.eflags),
+            _ => None,
+        };
+
+        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
+    }
+
+    pub fn get_address_value(&self, addr_str: &str) -> Result<i64> {
+        let addr = self.parse_address(addr_str)?;
+        Ok(ptrace::read(self.process.pid, addr as ptrace::AddressType)?)
+    }
+
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions
             .iter()
@@ -206,7 +338,7 @@ impl Debugger {
         Ok(())
     }
 
-    pub fn step_over(&mut self) -> Result<()>{
+    pub fn step_over(&mut self) -> Result<()> {
         let cs = Capstone::new()
             .x86()
             .mode(arch::x86::ArchMode::Mode64)
@@ -230,9 +362,7 @@ impl Debugger {
         let next_inst = insns.iter().next().unwrap();
         if next_inst.mnemonic() == Some("call") {
             let next_addr = rip + next_inst.len() as u64;
-            self
-                .breakpoint
-                .set_breakpoint(next_addr, self.process.pid);
+            self.breakpoint.set_breakpoint(next_addr, self.process.pid);
             self.cont();
         } else {
             ptrace::step(self.process.pid, None)?;
@@ -240,6 +370,52 @@ impl Debugger {
         Ok(())
     }
 
+    pub fn disassemble(&self) -> Result<()> {
+        let cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Intel)
+            .detail(true)
+            .build()
+            .expect("Failed to create Capstone object");
+
+        let regs = getregs(self.process.pid).unwrap();
+
+        let rip = regs.rip;
+
+        let num_bytes = 64;
+        let mut code = vec![0u8; num_bytes];
+        read_process_memory(self.process.pid, rip as usize, &mut code)?;
+        debug!("{:?}", code);
+
+        let insns = cs.disasm_all(&code, rip)?;
+
+        for i in insns.iter() {
+            println!(
+                "0x{:x}: {}\t{}",
+                i.address(),
+                i.mnemonic().unwrap_or(""),
+                i.op_str().unwrap_or("")
+            );
+            self.dwarf
+                .get_line_and_file(i.address() - self.process.base_addr);
+        }
+        Ok(())
+    }
+
+    pub fn print_sections(&self) -> Result<()> {
+        let data = fs::read(self.path.clone()).unwrap();
+        let obj_file = object::File::parse(&*data)?;
+        for section in obj_file.sections() {
+            println!(
+                "Section: {:<20} Addr: 0x{:08x}, Size: 0x{:x}",
+                section.name().unwrap_or("<unnamed>"),
+                section.address(),
+                section.size(),
+            );
+        }
+        Ok(())
+    }
 
     fn parse_address(&self, input: &str) -> Result<u64> {
         let trimmed = input.trim();
