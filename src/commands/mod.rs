@@ -7,12 +7,14 @@ pub mod disassemble;
 pub mod sections;
 pub mod offset;
 pub mod exit;
+pub mod backtrace;
 
 pub use breakpoint::BreakpointCommand;
 pub use breakpoint::RemoveBreakpointCommand;
 pub use command_trait::DebugCommand;
 pub use dump_hex::DumpHexCommand;
 pub use control::SingleStepCommand;
+use crate::commands::backtrace::BacktraceCommand;
 use crate::commands::breakpoint::ShowBreakpointsCommand;
 use crate::commands::control::ContinueCommand;
 use crate::commands::control::StepOverCommand;
@@ -46,7 +48,8 @@ impl CommandRouter {
             Box::new(SectionsCommand),
             Box::new(OffsetCommand),
             Box::new(ShowBreakpointsCommand),
-            Box::new(ExitCommand)
+            Box::new(ExitCommand),
+            Box::new(BacktraceCommand)
         ];
 
         for cmd in all_commands {
