@@ -43,3 +43,23 @@ impl DebugCommand for RemoveBreakpointCommand {
         Ok(())
     }
 }
+
+#[derive(Clone)]
+pub struct ShowBreakpointsCommand;
+
+impl DebugCommand for ShowBreakpointsCommand {
+    fn name(&self) -> &'static str {
+        "show-bp"
+    }
+
+    fn aliases(&self) -> &[&'static str] {
+        &["show"]
+    }
+
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
+        for entry in debugger.list_breakpoints() {
+            println!("0x{:x} (original byte: {:02x})", entry.0, entry.1);
+        }
+        Ok(())
+    }
+}

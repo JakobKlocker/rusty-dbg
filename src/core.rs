@@ -132,6 +132,10 @@ impl Debugger {
         let func_offset = regs.rip - self.process.base_addr;
         println!("{}", func_offset);
     }
+    
+    pub fn list_breakpoints(&self) -> &[(u64, u8)]{
+        &self.breakpoint.breakpoint
+    }
 
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
         self.functions

@@ -12,6 +12,7 @@ pub use breakpoint::RemoveBreakpointCommand;
 pub use command_trait::DebugCommand;
 pub use dump_hex::DumpHexCommand;
 pub use control::SingleStepCommand;
+use crate::commands::breakpoint::ShowBreakpointsCommand;
 use crate::commands::control::ContinueCommand;
 use crate::commands::control::StepOverCommand;
 use crate::commands::disassemble::DisassembleCommand;
@@ -41,7 +42,8 @@ impl CommandRouter {
             Box::new(StepOverCommand),
             Box::new(DisassembleCommand),
             Box::new(SectionsCommand),
-            Box::new(OffsetCommand)
+            Box::new(OffsetCommand),
+            Box::new(ShowBreakpointsCommand)
         ];
 
         for cmd in all_commands {
