@@ -1,5 +1,7 @@
 use crate::core::Debugger;
 use anyhow::Result;
+use log::info;
+use nix::sys::wait::{waitpid, WaitStatus};
 
 pub trait ProcessControl {
     fn resume_and_wait(&mut self);

@@ -1,6 +1,9 @@
-use crate::core::Debugger;
+use crate::core::memory::read_process_memory;
+use crate::core::*;
 use anyhow::Result;
+use capstone::prelude::*;
 use nix::sys::ptrace;
+use nix::sys::ptrace::*;
 
 pub trait Stepping {
     fn cont(&mut self) -> Result<()>;
@@ -36,10 +39,7 @@ impl Stepping for Debugger {
         let num_bytes = 10;
         let mut code = vec![0u8; num_bytes];
 
-        match read_process_memory(self.process.pid, rip as usize, &mut code) {
-            Ok(_) => {}
-            Err(e) => println!("read process memory failed with error {}", e),
-        }
+        read_process_memory(self.process.pid, rip as usize, &mut code)?;
         let insns = cs.disasm_all(&code, rip).expect("Disassembly failed");
         let next_inst = insns.iter().next().unwrap();
         if next_inst.mnemonic() == Some("call") {
