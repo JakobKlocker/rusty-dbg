@@ -1,6 +1,8 @@
 use crate::commands::DebugCommand;
 use crate::core::Debugger;
 use anyhow::Result;
+use crate::core::memory::Memory;
+
 #[derive(Clone)]
 pub struct PatchCommand;
 

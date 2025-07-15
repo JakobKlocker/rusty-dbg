@@ -1,5 +1,9 @@
 use libc::user_regs_struct;
 use anyhow::{Result, bail};
+use nix::sys::ptrace;
+use nix::sys::ptrace::*;
+use crate::core::Debugger;
+
 pub trait Registers {
     fn get_registers(&self) -> Result<user_regs_struct>;
     fn set_register(&self, reg: &str, value_str: &str) -> Result<()>;

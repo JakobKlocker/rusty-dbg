@@ -1,21 +1,13 @@
 use crate::core::breakpoint::*;
-use crate::dwarf::*;
-use crate::functions::*;
-use crate::process::*;
+use crate::core::symbols::*;
+use crate::core::process::*;
 use anyhow::{bail, Result};
-use capstone::prelude::*;
-use libc::user_regs_struct;
 use log::{debug, info};
-use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
-use nix::sys::ptrace::setregs;
 use object::{Object, ObjectSection};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-
-use crate::core::memory::read_process_memory;
-use crate::stack_unwind::get_unwind_info;
 
 #[derive(Debug, Clone)]
 pub enum DebuggerState {
@@ -129,7 +121,7 @@ impl Debugger {
         self.dwarf.get_line_and_file(rip - self.process.base_addr);
     }
 
-    fn parse_address(&self, input: &str) -> Result<u64> {
+    pub fn parse_address(&self, input: &str) -> Result<u64> {
         let trimmed = input.trim();
 
         if let Some(stripped) = trimmed.strip_prefix("0x") {

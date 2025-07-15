@@ -1,10 +1,9 @@
+use crate::core::memory::read_process_memory;
 use crate::core::Debugger;
-use crate::core::memory;
 use anyhow::Result;
 use capstone::prelude::*;
 use log::debug;
 use nix::sys::ptrace::getregs;
-use crate::core::memory::read_process_memory;
 
 pub trait Disassembler {
     fn disassemble(&self) -> Result<()>;

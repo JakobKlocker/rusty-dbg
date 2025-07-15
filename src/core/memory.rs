@@ -8,7 +8,7 @@ use std::io::Error;
 pub trait Memory {
     fn patch(&self, addr_str: &str, value_str: &str) -> Result<()>;
     fn get_address_value(&self, addr_str: &str) -> Result<i64>;
-    fn dump_hex(&mut self, addr_str: &str) -> Result<()>;
+    fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()>;
 }
 
 impl Memory for Debugger {

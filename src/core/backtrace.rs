@@ -1,8 +1,9 @@
 use crate::core::Debugger;
 use anyhow::Result;
 use nix::sys::ptrace;
-use crate::core::memory;
 use log::debug;
+use nix::sys::ptrace::*;
+use crate::core::symbols::get_unwind_info;
 pub trait Backtrace {
     fn backtrace(&self) -> Result<()>;
 }
