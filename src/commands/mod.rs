@@ -22,6 +22,7 @@ use crate::commands::control::StepOverCommand;
 use crate::commands::disassemble::DisassembleCommand;
 use crate::commands::exit::ExitCommand;
 use crate::commands::offset::OffsetCommand;
+use crate::commands::registers::GetRegisterCommand;
 use crate::commands::registers::SetRegisterCommand;
 use crate::commands::sections::SectionsCommand;
 use crate::core::Debugger;
@@ -52,7 +53,8 @@ impl CommandRouter {
             Box::new(ShowBreakpointsCommand),
             Box::new(ExitCommand),
             Box::new(BacktraceCommand),
-            Box::new(SetRegisterCommand)
+            Box::new(SetRegisterCommand),
+            Box::new(GetRegisterCommand)
         ];
 
         for cmd in all_commands {

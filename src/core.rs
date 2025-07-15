@@ -9,10 +9,10 @@ use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
+use object::{Object, ObjectSection};
+use std::fs;
 use std::path::Path;
 use std::process::Command;
-use std::fs;
-use object::{Object, ObjectSection};
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
@@ -133,12 +133,12 @@ impl Debugger {
         let func_offset = regs.rip - self.process.base_addr;
         println!("{}", func_offset);
     }
-    
-    pub fn list_breakpoints(&self) -> &[(u64, u8)]{
+
+    pub fn list_breakpoints(&self) -> &[(u64, u8)] {
         &self.breakpoint.breakpoint
     }
-    
-    pub fn exit(&self) -> Result<()>{
+
+    pub fn exit(&self) -> Result<()> {
         println!("Exiting the debugger...");
         std::process::exit(0);
     }
@@ -168,11 +168,8 @@ impl Debugger {
 
             let ret_addr_addr = (cfa as i64 + info.ra_offset) as u64;
 
-            let ret_addr = ptrace::read(
-                self.process.pid,
-                ret_addr_addr as ptrace::AddressType,
-            )
-            .unwrap() as u64;
+            let ret_addr = ptrace::read(self.process.pid, ret_addr_addr as ptrace::AddressType)
+                .unwrap() as u64;
 
             debug!(
                 "Return address (caller RIP): 0x{:016x}",
@@ -191,20 +188,17 @@ impl Debugger {
             rsp = cfa;
             if info.cfa_register == 6 {
                 let saved_rbp_addr = (cfa as i64 - 16) as u64;
-                rbp = ptrace::read(
-                    self.process.pid,
-                    saved_rbp_addr as ptrace::AddressType,
-                )
-                .unwrap() as u64;
+                rbp = ptrace::read(self.process.pid, saved_rbp_addr as ptrace::AddressType).unwrap()
+                    as u64;
             }
             first = false;
         }
         Ok(())
     }
-    
-    pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()>{
+
+    pub fn set_register(&self, reg: &str, value_str: &str) -> Result<()> {
         let value = self.parse_address(value_str)?;
-        
+
         let mut regs = ptrace::getregs(self.process.pid)?;
         match reg {
             "rip" => regs.rip = value,
@@ -229,6 +223,38 @@ impl Debugger {
         }
         ptrace::setregs(self.process.pid, regs)?;
         Ok(())
+    }
+
+    pub fn get_register_value(&self, name: &str) -> Result<u64> {
+        let regs = getregs(self.process.pid)?;
+        let value = match name {
+            "rip" => Some(regs.rip),
+            "rax" => Some(regs.rax),
+            "rbx" => Some(regs.rbx),
+            "rcx" => Some(regs.rcx),
+            "rdx" => Some(regs.rdx),
+            "rsi" => Some(regs.rsi),
+            "rdi" => Some(regs.rdi),
+            "rsp" => Some(regs.rsp),
+            "rbp" => Some(regs.rbp),
+            "r8" => Some(regs.r8),
+            "r9" => Some(regs.r9),
+            "r10" => Some(regs.r10),
+            "r11" => Some(regs.r11),
+            "r12" => Some(regs.r12),
+            "r13" => Some(regs.r13),
+            "r14" => Some(regs.r14),
+            "r15" => Some(regs.r15),
+            "eflags" => Some(regs.eflags),
+            _ => None,
+        };
+
+        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
+    }
+
+    pub fn get_address_value(&self, addr_str: &str) -> Result<i64> {
+        let addr = self.parse_address(addr_str)?;
+        Ok(ptrace::read(self.process.pid, addr as ptrace::AddressType)?)
     }
 
     pub fn get_function_name(&self, target_addr: u64) -> Option<String> {
@@ -344,7 +370,7 @@ impl Debugger {
         Ok(())
     }
 
-    pub fn disassemble(&self) -> Result<()>{
+    pub fn disassemble(&self) -> Result<()> {
         let cs = Capstone::new()
             .x86()
             .mode(arch::x86::ArchMode::Mode64)

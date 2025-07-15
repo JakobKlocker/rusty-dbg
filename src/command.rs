@@ -46,42 +46,14 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("read") => {
-                if let Some(addr) = parts.next() {
-                    let addr = if addr.starts_with("0x") {
-                        u64::from_str_radix(&addr[2..], 16)
-                    } else {
-                        u64::from_str_radix(addr, 10)
-                    };
-                    match addr {
-                        Ok(addr) => match self.read(addr) {
-                            Ok(value) => println!("value at address {:x} is {}", addr, value),
-                            Err(e) => println!("read failed with error: {}", e),
-                        },
-                        Err(e) => {
-                            println!("Invalid address format: {}", e);
-                        }
-                    }
-                }
-            }
             Some("registers") | Some("r") => {
-                if let Some(reg) = parts.next() {
-                    self.dump_register(reg);
-                } else {
                     self.dump_registers();
-                }
             }
             _ => println!("command not found {}", command),
         }
     }
 
 
-    fn read(&self, addr: u64) -> Result<i64> {
-        Ok(ptrace::read(
-            self.debugger.process.pid,
-            addr as ptrace::AddressType,
-        )?)
-    }
     fn write(&self, addr: u64, value: i64) -> Result<()> {
         ptrace::write(
             self.debugger.process.pid,
@@ -98,12 +70,6 @@ impl<'a> CommandHandler<'a> {
     }
 
 
-    fn dump_register(&self, reg: &str) {
-        match self.get_register_value(reg) {
-            Ok(value) => println!("{}: 0x{:x}", reg, value),
-            Err(err) => println!("Failed to get register {}", err),
-        }
-    }
 
     fn dump_registers(&self) {
         match getregs(self.debugger.process.pid) {
@@ -122,32 +88,4 @@ impl<'a> CommandHandler<'a> {
             .dwarf
             .get_line_and_file(rip - self.debugger.process.base_addr);
     }
-
-    fn get_register_value(&self, name: &str) -> Result<u64> {
-        let regs = getregs(self.debugger.process.pid)?;
-        let value = match name {
-            "rip" => Some(regs.rip),
-            "rax" => Some(regs.rax),
-            "rbx" => Some(regs.rbx),
-            "rcx" => Some(regs.rcx),
-            "rdx" => Some(regs.rdx),
-            "rsi" => Some(regs.rsi),
-            "rdi" => Some(regs.rdi),
-            "rsp" => Some(regs.rsp),
-            "rbp" => Some(regs.rbp),
-            "r8" => Some(regs.r8),
-            "r9" => Some(regs.r9),
-            "r10" => Some(regs.r10),
-            "r11" => Some(regs.r11),
-            "r12" => Some(regs.r12),
-            "r13" => Some(regs.r13),
-            "r14" => Some(regs.r14),
-            "r15" => Some(regs.r15),
-            "eflags" => Some(regs.eflags),
-            _ => None,
-        };
-
-        value.ok_or_else(|| anyhow::anyhow!("Unkown Register: {}", name))
-    }
-
 }
