@@ -13,7 +13,7 @@ impl DebugCommand for OffsetCommand {
         &[]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
         debugger.print_offset();
         Ok(())
     }

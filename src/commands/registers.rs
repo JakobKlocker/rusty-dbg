@@ -60,7 +60,7 @@ impl DebugCommand for GetAllRegistersCommand {
         &["regs"]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
         let regs = debugger.get_registers()?;
         println!("RIP:  0x{:016x}", regs.rip);
         println!("RSP:  0x{:016x}", regs.rsp);

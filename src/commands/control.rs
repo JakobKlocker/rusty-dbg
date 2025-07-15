@@ -19,7 +19,7 @@ impl DebugCommand for SingleStepCommand {
         &["s"]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
         debugger.single_step()
     }
 }
@@ -33,7 +33,7 @@ impl DebugCommand for ContinueCommand {
         &["c"]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
         debugger.cont()
     }
 }
@@ -47,7 +47,7 @@ impl DebugCommand for StepOverCommand {
         &["o"]
     }
 
-    fn execute(&self, args: &[&str], debugger: &mut Debugger) -> Result<()> {
+    fn execute(&self, _args: &[&str], debugger: &mut Debugger) -> Result<()> {
         debugger.step_over()
     }
 }
