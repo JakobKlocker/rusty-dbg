@@ -4,12 +4,12 @@ use crate::functions::*;
 use crate::process::*;
 use anyhow::{bail, Result};
 use log::{debug, info};
+use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
 use nix::sys::ptrace::setregs;
 use nix::sys::wait::{waitpid, WaitStatus};
 use std::path::Path;
 use std::process::Command;
-use nix::sys::ptrace;
 
 use crate::command::CommandHandler;
 use crate::memory::read_process_memory;
@@ -191,6 +191,17 @@ impl Debugger {
         let value = self.parse_address(value_str)?;
 
         ptrace::write(self.process.pid, addr as ptrace::AddressType, value as i64)?;
+        Ok(())
+    }
+
+    pub fn single_step(&mut self) -> Result<()> {
+        nix::sys::ptrace::step(self.process.pid, None)?;
+        Ok(())
+    }
+
+    pub fn cont(&mut self) -> Result<()> {
+        nix::sys::ptrace::cont(self.process.pid, None)?;
+        self.state = DebuggerState::AwaitingTrap;
         Ok(())
     }
 

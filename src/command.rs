@@ -71,36 +71,7 @@ impl<'a> CommandHandler<'a> {
                     _ => println!("Usage: set <register> <value>"),
                 }
             }
-            Some("write") => {
-                let args: Vec<&str> = parts.collect();
-                if args.len() != 2 {
-                    println!("Usage: write <addr> <value>");
-                    return;
-                }
-
-                let addr = if args[0].starts_with("0x") {
-                    u64::from_str_radix(&args[0][2..], 16)
-                } else {
-                    u64::from_str_radix(args[0], 10)
-                };
-
-                let value = if args[1].starts_with("0x") {
-                    i64::from_str_radix(&args[1][2..], 16)
-                } else {
-                    i64::from_str_radix(args[1], 10)
-                };
-
-                match (addr, value) {
-                    (Ok(addr), Ok(value)) => match self.write(addr, value) {
-                        Ok(()) => println!("writing value: {} to address: {:x}", value, addr),
-                        Err(e) => println!("ptrace write failed with error {}", e),
-                    },
-                    _ => {
-                        println!("Usage: write <addr> <value>");
-                    }
-                }
-            }
-            Some("sections") => {
+           Some("sections") => {
                 self.print_sections();
             }
             Some("read") => {
@@ -121,10 +92,7 @@ impl<'a> CommandHandler<'a> {
                     }
                 }
             }
-            Some("step") | Some("s") => {
-                ptrace::step(self.debugger.process.pid, None).expect("Single-step failed")
-            }
-            Some("over") | Some("o") => self.step_over(),
+           Some("over") | Some("o") => self.step_over(),
             Some("instr") => self.dissasembl_instructions(),
 
             Some("show-bp") | Some("show") => self.debugger.breakpoint.show_breakpoints(),
