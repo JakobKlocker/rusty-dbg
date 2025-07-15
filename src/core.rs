@@ -4,6 +4,7 @@ use crate::functions::*;
 use crate::process::*;
 use anyhow::{bail, Result};
 use capstone::prelude::*;
+use libc::user_regs_struct;
 use log::{debug, info};
 use nix::sys::ptrace;
 use nix::sys::ptrace::getregs;
@@ -262,6 +263,10 @@ impl Debugger {
             .iter()
             .find(|f| f.offset <= target_addr && f.offset + f.size > target_addr)
             .map(|f| f.name.clone())
+    }
+
+    pub fn get_registers(&self) -> Result<user_regs_struct> {
+        Ok(getregs(self.process.pid)?)
     }
 
     pub fn set_breakpoint_by_input(&mut self, input: &str) -> Result<u64> {

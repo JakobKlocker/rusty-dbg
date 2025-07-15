@@ -46,9 +46,6 @@ impl<'a> CommandHandler<'a> {
         let command_word = parts.next();
 
         match command_word {
-            Some("registers") | Some("r") => {
-                    self.dump_registers();
-            }
             _ => println!("command not found {}", command),
         }
     }
@@ -61,21 +58,6 @@ impl<'a> CommandHandler<'a> {
             value,
         )?;
         Ok(())
-    }
-
-    fn cont(&mut self) {
-        println!("Continuing execution...");
-        ptrace::cont(self.debugger.process.pid, None).expect("Cont fucntion failed");
-        self.debugger.state = DebuggerState::AwaitingTrap;
-    }
-
-
-
-    fn dump_registers(&self) {
-        match getregs(self.debugger.process.pid) {
-            Ok(regs) => println!("{:?}", regs),
-            Err(err) => println!("Failed to get registers: {}", err),
-        }
     }
 
     #[allow(dead_code)]
