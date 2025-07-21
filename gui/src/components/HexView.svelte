@@ -67,68 +67,70 @@
     });
 </script>
 
-<div
-    role="region"
-    class="font-mono text-sm bg-gray-900 text-gray-300 p-2 overflow-x-auto rounded-lg shadow-lg relative"
-    on:contextmenu={(e) => openContextMenu(e, "view")}
->
-    {#each Array(Math.ceil(data.length / bytesPerRow)) as _, rowIndex}
-        <div class="flex gap-4 whitespace-pre">
-            <span class="text-green-400 w-20 text-right">
-                {(baseAddress + rowIndex * bytesPerRow)
-                    .toString(16)
-                    .toUpperCase()
-                    .padStart(8, "0")}:
-            </span>
+<div class="bg-gray-800 rounded-lg shadow p-3 my-2">
+    <div
+        role="region"
+        class="font-mono text-sm bg-gray-900 text-gray-300 p-2 overflow-x-auto rounded-lg shadow-lg relative"
+        on:contextmenu={(e) => openContextMenu(e, "view")}
+    >
+        {#each Array(Math.ceil(data.length / bytesPerRow)) as _, rowIndex}
+            <div class="flex gap-4 whitespace-pre">
+                <span class="text-green-400 w-20 text-right">
+                    {(baseAddress + rowIndex * bytesPerRow)
+                        .toString(16)
+                        .toUpperCase()
+                        .padStart(8, "0")}:
+                </span>
 
-            <span class="text-purple-400 min-w-[240px]">
-                {#each data.slice(rowIndex * bytesPerRow, (rowIndex + 1) * bytesPerRow) as byte, i}
-                    <span
-                        role="button"
-                        tabindex="0"
-                        class="px-1 hover:bg-gray-700 cursor-pointer"
-                        on:contextmenu={(e) =>
-                            openContextMenu(
-                                e,
-                                "byte",
-                                rowIndex * bytesPerRow + i,
-                            )}
+                <span class="text-purple-400 min-w-[240px]">
+                    {#each data.slice(rowIndex * bytesPerRow, (rowIndex + 1) * bytesPerRow) as byte, i}
+                        <span
+                            role="button"
+                            tabindex="0"
+                            class="px-1 hover:bg-gray-700 cursor-pointer"
+                            on:contextmenu={(e) =>
+                                openContextMenu(
+                                    e,
+                                    "byte",
+                                    rowIndex * bytesPerRow + i,
+                                )}
+                        >
+                            {toHex(byte)}
+                        </span>
+                    {/each}
+                </span>
+
+                <span class="text-yellow-300">
+                    {#each data.slice(rowIndex * bytesPerRow, (rowIndex + 1) * bytesPerRow) as byte}
+                        {toAscii(byte)}
+                    {/each}
+                </span>
+            </div>
+        {/each}
+
+        {#if contextMenuVisible}
+            <div
+                class="fixed bg-gray-800 text-white text-sm rounded shadow-lg py-1 z-50"
+                style="top:{contextMenuY}px; left:{contextMenuX}px;"
+            >
+                {#if contextType === "byte"}
+                    <button
+                        class="px-3 py-1 hover:bg-gray-600 cursor-pointer w-full text-left"
+                        on:click={changeByte}
                     >
-                        {toHex(byte)}
-                    </span>
-                {/each}
-            </span>
-
-            <span class="text-yellow-300">
-                {#each data.slice(rowIndex * bytesPerRow, (rowIndex + 1) * bytesPerRow) as byte}
-                    {toAscii(byte)}
-                {/each}
-            </span>
-        </div>
-    {/each}
-
-    {#if contextMenuVisible}
-        <div
-            class="fixed bg-gray-800 text-white text-sm rounded shadow-lg py-1 z-50"
-            style="top:{contextMenuY}px; left:{contextMenuX}px;"
-        >
-            {#if contextType === "byte"}
-                <button
-                    class="px-3 py-1 hover:bg-gray-600 cursor-pointer w-full text-left"
-                    on:click={changeByte}
-                >
-                    Change
-                </button>
-            {:else}
-                <button
-                    class="px-3 py-1 hover:bg-gray-600 cursor-pointer w-full text-left"
-                    on:click={goToAddress}
-                >
-                    Go To Address
-                </button>
-            {/if}
-        </div>
-    {/if}
+                        Change
+                    </button>
+                {:else}
+                    <button
+                        class="px-3 py-1 hover:bg-gray-600 cursor-pointer w-full text-left"
+                        on:click={goToAddress}
+                    >
+                        Go To Address
+                    </button>
+                {/if}
+            </div>
+        {/if}
+    </div>
 </div>
 
 <style>

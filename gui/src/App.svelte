@@ -1,6 +1,8 @@
 <script lang="ts">
 import DisassemblyWindow from "./components/DisassemblyWindow.svelte";
 import HexView from "./components/HexView.svelte";
+import Menu from "./components/Menu.svelte";
+import Toolbar from "./components/Toolbar.svelte";
   const disasmData = [
     { address: 0x1000, bytes: [0x55], command: 'push rbp' },
     { address: 0x1001, bytes: [0x48, 0x89, 0xE5], command: 'mov rbp, rsp' },
@@ -19,6 +21,8 @@ import HexView from "./components/HexView.svelte";
 </script>
 
 <main class="p-4 bg-gray-950 min-h-screen space-y-4">
+  <Menu/>
+  <Toolbar/>
   <DisassemblyWindow disassembly ={disasmData} currentAddress={currentRIP} />
   <HexView data = {data}/>
 </main>
