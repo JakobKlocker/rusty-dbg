@@ -1,4 +1,4 @@
-<script>
+<script lang=ts>
     import { Play, Pause, StepForward, Flag } from "lucide-svelte";
     import { onMount, onDestroy } from "svelte";
 
