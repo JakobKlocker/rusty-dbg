@@ -8,7 +8,7 @@ use std::io::Error;
 pub trait Memory {
     fn patch(&self, addr_str: &str, value_str: &str) -> Result<()>;
     fn get_address_value(&self, addr_str: &str) -> Result<i64>;
-    fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()>;
+    fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<Vec<u8>>;
 }
 
 impl Memory for Debugger {
@@ -25,7 +25,7 @@ impl Memory for Debugger {
         Ok(ptrace::read(self.process.pid, addr as ptrace::AddressType)?)
     }
 
-    fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<()> {
+    fn dump_hex(&mut self, addr_str: &str, size: usize) -> Result<Vec<u8>> {
         let addr = self.parse_address(addr_str)?;
         let mut buf = vec![0u8; size];
         read_process_memory(self.process.pid, addr as usize, &mut buf)?;
@@ -51,7 +51,7 @@ impl Memory for Debugger {
             }
             println!("|");
         }
-        Ok(())
+        Ok(buf)
     }
 }
 

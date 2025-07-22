@@ -23,6 +23,7 @@ impl DebugCommand for DumpHexCommand {
             .get(1)
             .and_then(|s| s.parse::<usize>().ok())
             .unwrap_or(128);
-        debugger.dump_hex(addr, size)
+        debugger.dump_hex(addr, size);
+        Ok(())
     }
 }
