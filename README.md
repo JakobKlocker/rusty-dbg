@@ -2,6 +2,7 @@
 
 `rusty-dbg` is a command-line debugger for Linux systems, written entirely in Rust. It provides basic functionality like stepping through instructions, setting breakpoints, inspecting registers and memory, disassembling instructions, and viewing DWARF-based debug info.
 
+Due to the current architecture being tightly coupled to a CLI-only interface, further development on this repository has been paused.
 ---
 
 ## Features
